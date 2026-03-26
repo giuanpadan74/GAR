@@ -4,10 +4,10 @@
 # Esclude librerie, build e file temporanei
 
 # Configurazione
-PROJECT_NAME="gestione-agenti-roloil"
-BACKUP_DIR="./backups"
+PROJECT_NAME="GAR"
+BACKUP_DIR="/root/GARbackup"
 TIMESTAMP=$(date +"%Y%m%d_%H%M%S")
-BACKUP_NAME="${PROJECT_NAME}_backup_${TIMESTAMP}"
+BACKUP_NAME="${PROJECT_NAME}_backup_${TIMESTAMP}.zip"
 
 # Colori per output
 RED='\033[0;31m'
@@ -80,6 +80,10 @@ EXCLUDE_PATTERNS=(
     # Vite e strumenti di sviluppo
     ".vite"
     ".vite/*"
+    ".trae"
+    ".trae/*"
+    ".gemini"
+    ".gemini/*"
 )
 
 # Crea file di esclusione temporaneo
@@ -88,32 +92,54 @@ for pattern in "${EXCLUDE_PATTERNS[@]}"; do
     echo "$pattern" >> "$EXCLUDE_FILE"
 done
 
-echo -e "${YELLOW}📦 Creazione archivio backup...${NC}"
+echo -e "${YELLOW}📦 Creazione archivio ZIP...${NC}"
 
-# Crea il backup usando tar
-tar -czf "${BACKUP_DIR}/${BACKUP_NAME}.tar.gz" \
-    --exclude-from="$EXCLUDE_FILE" \
-    --exclude-vcs \
-    --exclude-backups \
-    .
+# Creiamo l'elenco dei file da includere (escludendo quelli nel pattern)
+# Usiamo python3 per creare uno ZIP dato che 'zip' non è installato
+python3 -c "
+import os, zipfile, fnmatch
+
+# Carica pattern di esclusione
+excludes = []
+with open('$EXCLUDE_FILE', 'r') as f:
+    excludes = [line.strip() for line in f if line.strip()]
+
+def is_excluded(path):
+    for pattern in excludes:
+        # Se il pattern termina con /*, controlliamo se il path inizia con la directory base
+        if pattern.endswith('/*'):
+            base = pattern[:-2]
+            if path == base or path.startswith(base + os.sep):
+                return True
+        # Match standard glob
+        if fnmatch.fnmatch(path, pattern) or any(fnmatch.fnmatch(part, pattern) for part in path.split(os.sep)):
+            return True
+    return False
+
+with zipfile.ZipFile('${BACKUP_DIR}/${BACKUP_NAME}', 'w', zipfile.ZIP_DEFLATED) as zipf:
+    for root, dirs, files in os.walk('.'):
+        # Rimuovi cartelle escluse da os.walk per non percorrerle inutilmente
+        dirs_to_keep = []
+        for d in dirs:
+            rel_path = os.path.relpath(os.path.join(root, d), '.')
+            if not is_excluded(rel_path):
+                dirs_to_keep.append(d)
+        dirs[:] = dirs_to_keep
+        
+        for file in files:
+            rel_path = os.path.relpath(os.path.join(root, file), '.')
+            if not is_excluded(rel_path):
+                zipf.write(rel_path)
+"
 
 # Verifica se il backup è stato creato con successo
 if [ $? -eq 0 ]; then
     # Calcola dimensione del backup
-    BACKUP_SIZE=$(du -h "${BACKUP_DIR}/${BACKUP_NAME}.tar.gz" | cut -f1)
+    BACKUP_SIZE=$(du -h "${BACKUP_DIR}/${BACKUP_NAME}" | cut -f1)
     
     echo -e "${GREEN}✅ Backup completato con successo!${NC}"
-    echo -e "${GREEN}📁 File backup: ${BACKUP_DIR}/${BACKUP_NAME}.tar.gz${NC}"
+    echo -e "${GREEN}📁 File backup: ${BACKUP_DIR}/${BACKUP_NAME}${NC}"
     echo -e "${GREEN}📊 Dimensione: $BACKUP_SIZE${NC}"
-    
-    # Lista dei contenuti del backup
-    echo -e "${YELLOW}📋 Contenuto del backup:${NC}"
-    tar -tzf "${BACKUP_DIR}/${BACKUP_NAME}.tar.gz" | head -20
-    
-    # Conta file totali nel backup
-    FILE_COUNT=$(tar -tzf "${BACKUP_DIR}/${BACKUP_NAME}.tar.gz" | wc -l)
-    echo -e "${GREEN}📈 File inclusi nel backup: $FILE_COUNT${NC}"
-    
 else
     echo -e "${RED}❌ Errore durante la creazione del backup!${NC}"
     exit 1
@@ -128,9 +154,9 @@ echo -e "${YELLOW}🧹 Pulizia backup vecchi...${NC}"
 
 # Rimuovi backup più vecchi, mantenendo solo gli ultimi N
 if [ -d "$BACKUP_DIR" ]; then
-    ls -t "${BACKUP_DIR}"/*.tar.gz 2>/dev/null | tail -n +$((KEEP_BACKUPS + 1)) | xargs rm -f
+    ls -t "${BACKUP_DIR}"/*.zip 2>/dev/null | tail -n +$((KEEP_BACKUPS + 1)) | xargs rm -f
     
-    REMAINING_BACKUPS=$(ls -1 "${BACKUP_DIR}"/*.tar.gz 2>/dev/null | wc -l)
+    REMAINING_BACKUPS=$(ls -1 "${BACKUP_DIR}"/*.zip 2>/dev/null | wc -l)
     echo -e "${GREEN}🗑️  Backup vecchi rimossi. Backup rimanenti: $REMAINING_BACKUPS${NC}"
 fi
 
