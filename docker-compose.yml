@@ -1,0 +1,75 @@
+services:
+  # Applicazione principale GAR
+  gar-app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: production
+    container_name: gar-production-app
+    ports:
+      - "8090:80"
+    environment:
+      # Variabili d'ambiente per produzione
+      # Nota: Sostituire con i valori reali in produzione
+      - VITE_SUPABASE_URL=${VITE_SUPABASE_URL:-https://tctndvmemnllloctyrpn.supabase.co}
+      - VITE_SUPABASE_ANON_KEY=${VITE_SUPABASE_ANON_KEY}
+      - GEMINI_API_KEY=${GEMINI_API_KEY}
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    networks:
+      - gar-network
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.gar.rule=Host(`gar.localhost`)"
+      - "traefik.http.services.gar.loadbalancer.server.port=80"
+
+  # Nginx Proxy per dominio agentirol.sbs - livello applicativo GAR
+  nginx-proxy:
+    image: nginx:alpine
+    container_name: gar-nginx-proxy
+    ports:
+      - "8000:80"   # HTTP interno
+      - "8082:443"  # HTTPS interno
+    volumes:
+      - ./nginx-proxy.conf:/etc/nginx/nginx.conf:ro
+      - ./ssl:/etc/nginx/ssl:ro  # Certificati SSL
+    depends_on:
+      - gar-app
+    restart: unless-stopped
+    networks:
+      gar-network:
+        aliases:
+          - gar-nginx-proxy
+
+
+  # Nginx principale (reverse proxy host) per agentirol.sbs
+  nginx:
+    image: nginx:alpine
+    container_name: nginx
+    ports:
+      - "80:80"    # HTTP pubblico
+      - "443:443"  # HTTPS pubblico
+    volumes:
+      - ./agentirol.sbs.conf:/etc/nginx/conf.d/agentirol.sbs.conf:ro
+      - ./komgaitaliafumetti.club.conf:/etc/nginx/conf.d/komgaitaliafumetti.club.conf:ro
+      - ./ssl:/etc/nginx/ssl:ro
+    depends_on:
+      - nginx-proxy
+    restart: unless-stopped
+    networks:
+      - gar-network
+
+networks:
+  gar-network:
+    driver: bridge
+    name: gar-network
+
+# Volumi per persistenza dati (se necessario in futuro)
+volumes:
+  gar-data:
+    name: gar-data

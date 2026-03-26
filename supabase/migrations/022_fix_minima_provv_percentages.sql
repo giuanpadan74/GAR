@@ -1,0 +1,5 @@
+-- =====================================================
+-- MIGRAZIONE 022: Correzione Percentuali MINIMA PROVV
+-- =====================================================
+-- 
+-- Corregge i valori errati di MINIMA PROVV

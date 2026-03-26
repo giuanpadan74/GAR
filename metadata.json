@@ -1,0 +1,5 @@
+{
+  "name": "Gestione Agenti Roloil_202510071808_Supabase",
+  "description": "Una web-app per la gestione e l'assegnazione dei comuni agli Agenti di Commercio, con visualizzazione su mappa.",
+  "requestFramePermissions": []
+}
