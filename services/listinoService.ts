@@ -59,7 +59,9 @@ export class ListinoService {
       promoDAL: 'promo_dal',
       promoAL: 'promo_al',
       imponibile: 'imponibile',
-      provv: 'provv'
+      provv: 'provv',
+      prezzo_old: 'prezzo_old',
+      variaz: 'variaz'
     };
 
     const mappedField = mapping[field] || field;

@@ -114,6 +114,7 @@ interface EditableProductRowProps {
   showMinimoColumns?: boolean;
   showManualColumns?: boolean;
   showPromoColumns?: boolean;
+  showOldPriceColumns?: boolean;
   showActionsColumn?: boolean;
   promoEditMode?: boolean;
   onAplibintDoubleClick?: (product: Product) => void;
@@ -136,6 +137,9 @@ interface EditableFields {
   promoDAL: string;
   promoAL: string;
   promoPrezzo: string;
+  prezzo_old: string;
+  varprezz: string;
+  variaz: string;
   obsoleto: boolean;
 }
 
@@ -145,6 +149,7 @@ export const EditableProductRow: React.FC<EditableProductRowProps> = ({
   showMinimoColumns = false,
   showManualColumns = false,
   showPromoColumns = false,
+  showOldPriceColumns = false,
   showActionsColumn = false,
   promoEditMode = false,
   onProductUpdate,
@@ -176,6 +181,9 @@ export const EditableProductRow: React.FC<EditableProductRowProps> = ({
     promoDAL: formatDateToItalian(product.promoDAL || ''),
     promoAL: formatDateToItalian(product.promoAL || ''),
     promoPrezzo: product.promoPrezzo?.toString() || '',
+    prezzo_old: product.prezzo_old?.toString() || '',
+    varprezz: product.varprezz?.toString() || '',
+    variaz: product.variaz?.toString() || '',
     obsoleto: product.obsoleto || false
   });
 
@@ -201,6 +209,9 @@ export const EditableProductRow: React.FC<EditableProductRowProps> = ({
       promoDAL: editingField === 'promoDAL' ? prev.promoDAL : formatDateToItalian(product.promoDAL || ''),
       promoAL: editingField === 'promoAL' ? prev.promoAL : formatDateToItalian(product.promoAL || ''),
       promoPrezzo: editingField === 'promoPrezzo' ? prev.promoPrezzo : (product.promoPrezzo?.toString() || ''),
+      prezzo_old: editingField === 'prezzo_old' ? prev.prezzo_old : (product.prezzo_old?.toString() || ''),
+      varprezz: editingField === 'varprezz' ? prev.varprezz : (product.varprezz?.toString() || ''),
+      variaz: editingField === 'variaz' ? prev.variaz : (product.variaz?.toString() || ''),
       obsoleto: editingField === 'obsoleto' ? prev.obsoleto : (product.obsoleto || false)
     }));
     
@@ -447,6 +458,24 @@ export const EditableProductRow: React.FC<EditableProductRowProps> = ({
     try {
       const updates: any = {};
       updates[fieldName] = value;
+
+      // Se stiamo aggiornando il listino o il vecchio prezzo, ricalcola la variazione
+      if (fieldName === 'apprli' || fieldName === 'prezzo_old') {
+        const listPrice = fieldName === 'apprli' ? parseFloat(value.toString()) : parseFloat(editedFields.apprli);
+        const oldPrice = fieldName === 'prezzo_old' ? parseFloat(value.toString()) : parseFloat(editedFields.prezzo_old);
+        
+        if (!isNaN(listPrice) && !isNaN(oldPrice)) {
+          // Ricalcola varprezz (+/- in euro)
+          updates.varprezz = parseFloat((listPrice - oldPrice).toFixed(2));
+          
+          // Ricalcola variaz (percentuale)
+          if (oldPrice !== 0) {
+            updates.variaz = parseFloat(((listPrice - oldPrice) / oldPrice).toFixed(4));
+          } else {
+            updates.variaz = 0;
+          }
+        }
+      }
       
       // Validazione del singolo campo
       const validation = validateSingleField(fieldName as keyof EditableProductInput, value);
@@ -480,26 +509,19 @@ export const EditableProductRow: React.FC<EditableProductRowProps> = ({
     }
   };
 
-  // Gestisce il doppio click per attivare l'editing di un campo specifico
-  const handleFieldDoubleClick = async (fieldName: string) => {
+  // Gestisce il click per attivare l'editing di un campo specifico
+  const handleFieldClick = async (fieldName: string) => {
     // Solo se la modalità Modifica è attiva
     if (!showActionsColumn) return;
     
-    // Se c'è già un campo in editing, non salvarlo automaticamente
-    // L'utente deve premere INVIO per salvare
+    // Se stiamo già editando questo campo, non fare nulla
+    if (editingField === fieldName) return;
+
+    // Se c'è già un campo in editing differente, salvalo o esci
     if (editingField && editingField !== fieldName) {
-      // Ripristina il valore originale del campo precedente se non salvato
-      setEditedFields(prev => ({
-        ...prev,
-        [editingField]: product[editingField as keyof Product]?.toString() || ''
-      }));
-      
-      // Rimuovi eventuali errori di validazione del campo precedente
-      setValidationErrors(prev => {
-        const newErrors = { ...prev };
-        delete newErrors[editingField];
-        return newErrors;
-      });
+      // Per semplicità ora salviamo se cambiamo campo
+      const currentEditingValue = editedFields[editingField as keyof EditableFields];
+      await handleAutoSave(editingField, currentEditingValue);
     }
     
     // Attiva l'editing per il campo selezionato
@@ -514,10 +536,12 @@ export const EditableProductRow: React.FC<EditableProductRowProps> = ({
     }, 50);
   };
 
-  // Gestisce l'uscita dall'editing (onBlur) - NON salva più automaticamente
-  const handleFieldBlur = (fieldName: string, value: any) => {
-    // Non fare nulla su blur - il salvataggio avviene solo su INVIO
-    // Mantieni il campo in editing fino a quando l'utente non preme INVIO o ESC
+  // Gestisce l'uscita dall'editing (onBlur) - Salva automaticamente per velocità
+  const handleFieldBlur = async (fieldName: string, value: any) => {
+    if (editingField === fieldName) {
+      await handleAutoSave(fieldName, value);
+      setEditingField(null);
+    }
   };
 
   // Gestisce il tasto Enter per salvare e Escape per annullare
@@ -637,6 +661,28 @@ export const EditableProductRow: React.FC<EditableProductRowProps> = ({
         if (editedFields.aplib1 !== (product.aplib1 || '')) {
           updates.aplib1 = editedFields.aplib1;
         }
+
+        // PREZZO VECCHIO E VARIAZIONE
+        if (editedFields.prezzo_old !== (product.prezzo_old?.toString() || '')) {
+          const numericValue = parseFloat(editedFields.prezzo_old);
+          if (!isNaN(numericValue)) {
+            updates.prezzo_old = numericValue;
+          }
+        }
+
+        if (editedFields.varprezz !== (product.varprezz?.toString() || '')) {
+          const numericValue = parseFloat(editedFields.varprezz);
+          if (!isNaN(numericValue)) {
+            updates.varprezz = numericValue;
+          }
+        }
+
+        if (editedFields.variaz !== (product.variaz?.toString() || '')) {
+          const numericValue = parseFloat(editedFields.variaz);
+          if (!isNaN(numericValue)) {
+            updates.variaz = numericValue;
+          }
+        }
         
         // Campi promo
         if (editedFields.promoPrezzo !== (product.promoPrezzo?.toString() || '')) {
@@ -709,8 +755,27 @@ export const EditableProductRow: React.FC<EditableProductRowProps> = ({
   };
 
   const handleFieldChange = (field: keyof EditableFields, value: string | boolean) => {
-    // Aggiorna solo il valore senza validazione
-    setEditedFields(prev => ({ ...prev, [field]: value }));
+    // Aggiorna il valore
+    setEditedFields(prev => {
+      const newState = { ...prev, [field]: value };
+      
+      // Se cambia apprli o prezzo_old, ricalcola varprezz e variaz
+      if (field === 'apprli' || field === 'prezzo_old') {
+        const listPrice = parseFloat(field === 'apprli' ? value as string : prev.apprli);
+        const oldPrice = parseFloat(field === 'prezzo_old' ? value as string : prev.prezzo_old);
+        
+        if (!isNaN(listPrice) && !isNaN(oldPrice)) {
+          newState.varprezz = (listPrice - oldPrice).toFixed(2);
+          if (oldPrice !== 0) {
+            newState.variaz = ((listPrice - oldPrice) / oldPrice).toFixed(4);
+          } else {
+            newState.variaz = '0';
+          }
+        }
+      }
+      
+      return newState;
+    });
     
     // Rimuovi eventuali errori di validazione precedenti quando l'utente inizia a digitare
     if (validationErrors[field]) {
@@ -836,8 +901,31 @@ export const EditableProductRow: React.FC<EditableProductRowProps> = ({
       } else if (field === 'promoDAL' || field === 'promoAL') {
         displayValue = editedFields[field] || '-';
       } else if (field === 'promoPrezzo') {
-        displayValue = product.promoPrezzo ? `€${parseFloat(product.promoPrezzo.toString()).toFixed(2)}` : '-';
-      } else {
+        const val = editedFields.promoPrezzo;
+        displayValue = val ? `€${parseFloat(val).toFixed(2)}` : '-';
+      } else if (field === 'prezzo_old') {
+        const val = editedFields.prezzo_old;
+        displayValue = val ? `€${parseFloat(val).toFixed(2)}` : '-';
+      } else if (field === 'varprezz') {
+        const val = editedFields.varprezz;
+        const numVal = parseFloat(val);
+        const colorClass = numVal > 0 ? 'text-red-600' : numVal < 0 ? 'text-green-600' : 'text-gray-600';
+        displayValue = (
+          <span className={`font-medium ${colorClass}`}>
+            {numVal > 0 ? '+' : ''}{numVal.toFixed(2)}
+          </span>
+        );
+      } else if (field === 'variaz') {
+        const val = editedFields.variaz;
+        const numVal = parseFloat(val);
+        const colorClass = numVal > 0 ? 'text-red-600 font-bold' : numVal < 0 ? 'text-green-600 font-bold' : 'text-gray-600';
+        displayValue = (
+          <span className={colorClass}>
+            {(numVal * 100).toFixed(2)}%
+          </span>
+        );
+      }
+ else {
         displayValue = editedFields[field];
       }
       
@@ -855,8 +943,8 @@ export const EditableProductRow: React.FC<EditableProductRowProps> = ({
             ${field === 'descrizione' && product.obsoleto ? 'line-through text-gray-500' : ''}
             ${showActionsColumn ? 'border border-transparent' : ''}
           `}
-          onDoubleClick={() => handleFieldDoubleClick(field)}
-          title={showActionsColumn ? 'Doppio click per modificare - INVIO per salvare, ESC per annullare' : ''}
+          onClick={() => handleFieldClick(field)}
+          title={showActionsColumn ? 'Click per modificare - INVIO per salvare, ESC per annullare' : ''}
         >
           {displayValue || '-'}
         </span>
@@ -893,48 +981,52 @@ export const EditableProductRow: React.FC<EditableProductRowProps> = ({
             type={type}
             value={editedFields[field] as string}
             onChange={(e) => handleFieldChange(field, e.target.value)}
-            onBlur={(e) => {
-              // Non salvare più automaticamente su blur
-              // Il salvataggio avviene solo su INVIO
-            }}
-            onKeyDown={(e) => {
-              if (isFieldEditable) {
-                const value = type === 'number' ? parseFloat((e.target as HTMLInputElement).value) || 0 : (e.target as HTMLInputElement).value;
-                handleFieldKeyDown(e, field, value);
-              }
-            }}
-            disabled={!isFieldEditable}
-            className={`
-              w-full px-2 py-1 text-sm border-2 rounded
-              transition-all duration-200
-              ${!isFieldEditable ? 'bg-gray-100 text-gray-500 cursor-not-allowed border-gray-200' : ''}
-              ${validationErrors[field] ? 'border-red-500 bg-red-50 ring-2 ring-red-200' : 'border-blue-500 bg-blue-50'}
-              ${isFieldEditable ? 'focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-600 shadow-md' : ''}
-              ${className}
-            `}
-            step={type === 'number' ? '0.01' : undefined}
-            placeholder={field === 'promoDAL' || field === 'promoAL' ? 'dd/mm/yyyy' : 'Digita il nuovo valore...'}
-            title={!isFieldEditable ? 'Campo non editabile - attiva la modalità Modifica' : 
-                   'INVIO per salvare, ESC per annullare' + 
-                   ((field === 'promoDAL' || field === 'promoAL') ? ' - Formato: dd/mm/yyyy' : '')}
-          />
-        )}
-        {validationErrors[field] && (
-          <div className="absolute top-full left-0 z-10 mt-1 px-2 py-1 text-xs text-white bg-red-500 rounded shadow-lg whitespace-nowrap animate-pulse">
-            <AlertCircle className="inline w-3 h-3 mr-1" />
-            {validationErrors[field]}
-          </div>
-        )}
-        {/* Indicatore di editing attivo */}
-        {isCurrentFieldEditing && !validationErrors[field] && (
-          <div className="absolute top-full left-0 z-10 mt-1 px-2 py-1 text-xs text-blue-700 bg-blue-100 rounded shadow-lg whitespace-nowrap">
-            <Edit2 className="inline w-3 h-3 mr-1" />
-            INVIO per salvare, ESC per annullare
-          </div>
-        )}
-      </div>
-    );
-  };
+          onFocus={(e) => e.target.select()}
+          onKeyDown={(e) => {
+            if (isFieldEditable) {
+              const value = type === 'number' ? parseFloat((e.target as HTMLInputElement).value) || 0 : (e.target as HTMLInputElement).value;
+              handleFieldKeyDown(e, field, value);
+            }
+          }}
+          onBlur={(e) => {
+            if (isFieldEditable) {
+              const value = type === 'number' ? parseFloat(e.target.value) || 0 : e.target.value;
+              handleFieldBlur(field, value);
+            }
+          }}
+          inputMode={type === 'number' ? 'decimal' : undefined}
+          disabled={!isFieldEditable}
+          className={`
+            w-full px-2 py-1 text-sm border-2 rounded
+            transition-all duration-200
+            ${!isFieldEditable ? 'bg-gray-100 text-gray-500 cursor-not-allowed border-gray-200' : ''}
+            ${validationErrors[field] ? 'border-red-500 bg-red-50 ring-2 ring-red-200' : 'border-blue-500 bg-blue-50'}
+            ${isFieldEditable ? 'focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-600 shadow-md' : ''}
+            ${className}
+          `}
+          step={type === 'number' ? '0.01' : undefined}
+          placeholder={field === 'promoDAL' || field === 'promoAL' ? 'dd/mm/yyyy' : 'Digita il nuovo valore...'}
+          title={!isFieldEditable ? 'Campo non editabile - attiva la modalità Modifica' : 
+                 'INVIO per salvare, ESC per annullare' + 
+                 ((field === 'promoDAL' || field === 'promoAL') ? ' - Formato: dd/mm/yyyy' : '')}
+        />
+      )}
+      {validationErrors[field] && (
+        <div className="absolute top-full left-0 z-10 mt-1 px-2 py-1 text-xs text-white bg-red-500 rounded shadow-lg whitespace-nowrap animate-pulse">
+          <AlertCircle className="inline w-3 h-3 mr-1" />
+          {validationErrors[field]}
+        </div>
+      )}
+      {/* Indicatore di editing attivo */}
+      {isCurrentFieldEditing && !validationErrors[field] && (
+        <div className="absolute top-full left-0 z-10 mt-1 px-2 py-1 text-xs text-blue-700 bg-blue-100 rounded shadow-lg whitespace-nowrap">
+          <Edit2 className="inline w-3 h-3 mr-1" />
+          INVIO per salvare, ESC per annullare - Click fuori per salvare
+        </div>
+      )}
+    </div>
+  );
+};
 
   return (
     <>
@@ -950,21 +1042,21 @@ export const EditableProductRow: React.FC<EditableProductRowProps> = ({
       </td>
 
       {/* BRAND */}
-      {!showMinimoColumns && !showManualColumns && !showPromoColumns && (
+      {!showMinimoColumns && !showManualColumns && (!showPromoColumns || showOldPriceColumns) && (
         <td className="px-3 py-3 text-sm text-gray-900 text-left">
           {renderEditableCell({ field: "brand" })}
         </td>
       )}
 
       {/* XDE40 */}
-      {!showMinimoColumns && !showManualColumns && !showPromoColumns && (
+      {!showMinimoColumns && !showManualColumns && (!showPromoColumns || showOldPriceColumns) && (
         <td className="px-1 py-3 text-sm text-gray-600 max-w-[80px] text-left">
           {renderEditableCell({ field: "xde40", className: "max-w-[80px]" })}
         </td>
       )}
 
       {/* XDE60 */}
-      {!showMinimoColumns && !showManualColumns && !showPromoColumns && (
+      {!showMinimoColumns && !showManualColumns && (!showPromoColumns || showOldPriceColumns) && (
         <td className="px-1 py-3 text-sm text-gray-600 max-w-[80px] text-left">
           {renderEditableCell({ field: "xde60", className: "max-w-[80px]" })}
         </td>
@@ -1001,6 +1093,21 @@ export const EditableProductRow: React.FC<EditableProductRowProps> = ({
           renderEditableCell({ field: "apprli", type: "number" })
         )}
       </td>
+
+      {/* PREZZO VECCHIO */}
+      {showOldPriceColumns && (
+        <>
+          <td className="px-3 py-3 text-sm text-blue-900 bg-blue-50 text-right">
+            {renderEditableCell({ field: "prezzo_old", type: "number", className: "text-blue-900" })}
+          </td>
+          <td className="px-3 py-3 text-sm bg-blue-50 text-right">
+            {renderEditableCell({ field: "varprezz", type: "number" })}
+          </td>
+          <td className="px-3 py-3 text-sm bg-blue-50 text-right">
+            {renderEditableCell({ field: "variaz", type: "number" })}
+          </td>
+        </>
+      )}
 
       {/* CONOU - Editabile */}
       <td className="px-3 py-3 text-sm text-gray-900 text-right">

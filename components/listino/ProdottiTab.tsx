@@ -44,6 +44,7 @@ export const ProdottiTab: React.FC = () => {
   const [showMinimoColumns, setShowMinimoColumns] = useState(false);
   const [showManualColumns, setShowManualColumns] = useState(false);
   const [showPromoColumns, setShowPromoColumns] = useState(false);
+  const [showOldPriceColumns, setShowOldPriceColumns] = useState(false);
   const [showActionsColumn, setShowActionsColumn] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [showImportModal, setShowImportModal] = useState(false);
@@ -257,8 +258,20 @@ export const ProdottiTab: React.FC = () => {
     if (newShowPromoColumns) {
       setShowMinimoColumns(false);
       setShowManualColumns(false);
+      setShowOldPriceColumns(false);
       setPromoEditMode(true);
     } else {
+      setPromoEditMode(false);
+    }
+  };
+
+  const toggleOldPriceColumns = () => {
+    const newShowOldPriceColumns = !showOldPriceColumns;
+    setShowOldPriceColumns(newShowOldPriceColumns);
+    if (newShowOldPriceColumns) {
+      setShowMinimoColumns(false);
+      setShowManualColumns(false);
+      setShowPromoColumns(false);
       setPromoEditMode(false);
     }
   };
@@ -327,6 +340,7 @@ export const ProdottiTab: React.FC = () => {
                   {showPromoColumns ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                   <span>{showPromoColumns ? 'Nascondi' : 'PROMO'}</span>
                 </button>
+
               </div>
 
               {/* Pulsante Azioni - Disponibile per tutti i ruoli con permessi di scrittura */}
@@ -407,6 +421,7 @@ export const ProdottiTab: React.FC = () => {
                 <span>{showPromoColumns ? 'Nascondi' : 'PROMO'}</span>
               </button>
 
+
               {/* Pulsante Azioni - Disponibile solo per ADMIN */}
               {isAdmin() && (
                 <button
@@ -469,8 +484,10 @@ export const ProdottiTab: React.FC = () => {
         disabled={loading}
         onToggleMinimo={toggleMinimoColumns}
         onToggleManual={toggleManualColumns}
+        onToggleOldPrice={toggleOldPriceColumns}
         showMinimoColumns={showMinimoColumns}
         showManualColumns={showManualColumns}
+        showOldPriceColumns={showOldPriceColumns}
         isRecalculating={isRecalculating}
       />
 
@@ -485,6 +502,7 @@ export const ProdottiTab: React.FC = () => {
           showMinimoColumns={showMinimoColumns}
           showManualColumns={showManualColumns}
           showPromoColumns={showPromoColumns}
+          showOldPriceColumns={showOldPriceColumns}
           showActionsColumn={showActionsColumn}
           promoEditMode={promoEditMode}
           onProductUpdate={handleProductUpdate}

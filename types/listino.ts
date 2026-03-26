@@ -74,6 +74,9 @@ export interface Product {
   // Campi esistenti mantenuti per compatibilità
   is_active: boolean;
   obsoleto?: boolean; // Campo per marcare prodotti obsoleti
+  prezzo_old?: number; // Vecchio prezzo
+  varprezz?: number; // Variazione prezzo in euro
+  variaz?: number; // Variazione prezzo percentuale
   created_at: string;
   updated_at: string;
 }
@@ -146,6 +149,7 @@ export interface ProductFilters {
   price_min?: number;
   price_max?: number;
   is_active?: boolean;
+  active?: boolean; // Alias per is_active usato nel service
   sort_field?: SortField;
   sort_direction?: SortDirection;
   brand?: string;

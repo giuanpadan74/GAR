@@ -247,3 +247,14 @@ code {
 .pulse-glow {
   animation: pulse-glow 2s ease-in-out infinite;
 }
+
+/* Nascondi le frecce su/giù (spinners) nei campi numerici */
+input::-webkit-outer-spin-button,
+input::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+input[type=number] {
+  -moz-appearance: textfield;
+}
