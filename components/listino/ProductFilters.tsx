@@ -13,8 +13,10 @@ interface ProductFiltersProps {
   disabled?: boolean;
   onToggleMinimo?: () => void;
   onToggleManual?: () => void;
+  onToggleOldPrice?: () => void;
   showMinimoColumns?: boolean;
   showManualColumns?: boolean;
+  showOldPriceColumns?: boolean;
   isRecalculating?: boolean;
 }
 
@@ -36,8 +38,10 @@ export const ProductFilters: React.FC<ProductFiltersProps> = ({
   disabled,
   onToggleMinimo,
   onToggleManual,
+  onToggleOldPrice,
   showMinimoColumns,
   showManualColumns,
+  showOldPriceColumns,
   isRecalculating,
 }) => {
   const [searchInputValue, setSearchInputValue] = useState(filters.search || '');
@@ -198,6 +202,18 @@ export const ProductFilters: React.FC<ProductFiltersProps> = ({
                   className="px-2.5 py-2 text-sm rounded-lg font-medium transition-colors bg-orange-600 text-white hover:bg-orange-700"
                 >
                   {showManualColumns ? 'Nascondi' : 'A mano'}
+                </button>
+              )}
+              {onToggleOldPrice && (
+                <button
+                  onClick={onToggleOldPrice}
+                  className={`px-2.5 py-2 text-sm rounded-lg font-medium transition-all duration-200 ${
+                    showOldPriceColumns
+                      ? 'bg-blue-200 text-blue-800 shadow-sm'
+                      : 'bg-blue-50 text-blue-600 hover:bg-blue-100'
+                  }`}
+                >
+                  {showOldPriceColumns ? 'Nascondi V.' : 'Vecchio P.'}
                 </button>
               )}
               <button
@@ -436,8 +452,21 @@ export const ProductFilters: React.FC<ProductFiltersProps> = ({
               onClick={onToggleManual}
               className="w-32 px-2.5 py-2 rounded-lg text-sm font-medium transition-colors bg-orange-600 text-white hover:bg-orange-700"
             >
-              <Eye className="w-4 h-4 mr-1" />
+              <Eye className="w-4 h-4 mr-1 inline-block" />
               <span>{showManualColumns ? 'Nascondi' : 'A mano'}</span>
+            </button>
+          )}
+          {onToggleOldPrice && (
+            <button
+              onClick={onToggleOldPrice}
+              className={`w-40 px-2.5 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
+                showOldPriceColumns
+                  ? 'bg-blue-200 text-blue-800 shadow-sm'
+                  : 'bg-blue-50 text-blue-600 hover:bg-blue-100'
+              }`}
+            >
+              {showOldPriceColumns ? <EyeOff className="w-4 h-4 mr-1 inline-block" /> : <Eye className="w-4 h-4 mr-1 inline-block" />}
+              <span>{showOldPriceColumns ? 'Nascondi' : 'Vecchio Prezzo'}</span>
             </button>
           )}
         </div>

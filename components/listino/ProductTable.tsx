@@ -16,6 +16,7 @@ interface ProductTableProps {
   showMinimoColumns?: boolean;
   showManualColumns?: boolean;
   showPromoColumns?: boolean;
+  showOldPriceColumns?: boolean;
   showActionsColumn?: boolean;
   promoEditMode?: boolean;
   onProductUpdate?: (updatedProduct: Product) => void;
@@ -80,6 +81,7 @@ const ProductCard: React.FC<{
   product: Product; 
   showMinimoColumns: boolean; 
   showManualColumns?: boolean;
+  showOldPriceColumns?: boolean;
   showActionsColumn?: boolean;
   index: number;
   onProductDelete?: (productId: string) => void;
@@ -88,6 +90,7 @@ const ProductCard: React.FC<{
   product, 
   showMinimoColumns, 
   showManualColumns = false,
+  showOldPriceColumns = false,
   showActionsColumn = false,
   index,
   onProductDelete,
@@ -273,6 +276,39 @@ const ProductCard: React.FC<{
             <div className="space-y-1">
               <div className="text-xs text-black">Imballo</div>
               <div className="text-sm text-black">{product.apdesi || '-'}</div>
+            </div>
+          </>
+        )}
+
+        {/* Sezione Vecchio Prezzo (mobile) */}
+        {showOldPriceColumns && (
+          <>
+            <div className="space-y-1">
+              <div className="text-xs text-blue-600">P. Vecchio</div>
+              <div className="text-sm font-medium text-blue-900 bg-blue-50 px-2 py-1 rounded">
+                {product.prezzo_old !== null && product.prezzo_old !== undefined
+                  ? `€ ${product.prezzo_old.toFixed(2)}` 
+                  : '-'
+                }
+              </div>
+            </div>
+            <div className="space-y-1">
+              <div className="text-xs text-blue-600">+/-</div>
+              <div className="text-sm font-medium text-blue-900 bg-blue-50 px-2 py-1 rounded">
+                {(product.varprezz !== null && product.varprezz !== undefined)
+                  ? `${product.varprezz > 0 ? '+' : ''}${product.varprezz.toFixed(2)}` 
+                  : '-'
+                }
+              </div>
+            </div>
+            <div className="space-y-1">
+              <div className="text-xs text-blue-600">Variazione</div>
+              <div className="text-sm font-medium text-blue-900 bg-blue-50 px-2 py-1 rounded">
+                {product.variaz !== null && product.variaz !== undefined
+                  ? `${(product.variaz * 100).toFixed(2)}%` 
+                  : '-'
+                }
+              </div>
             </div>
           </>
         )}
@@ -491,6 +527,7 @@ export const ProductTable: React.FC<ProductTableProps> = ({
   showMinimoColumns = false,
   showManualColumns = false,
   showPromoColumns = false,
+  showOldPriceColumns = false,
   showActionsColumn = false,
   promoEditMode = false,
   onProductUpdate,
@@ -610,6 +647,7 @@ export const ProductTable: React.FC<ProductTableProps> = ({
                   product={product} 
                   showMinimoColumns={showMinimoColumns}
                   showManualColumns={showManualColumns}
+                  showOldPriceColumns={showOldPriceColumns}
                   showActionsColumn={showActionsColumn}
                   index={index}
                   onProductDelete={onProductDelete}
@@ -638,7 +676,7 @@ export const ProductTable: React.FC<ProductTableProps> = ({
                 </th>
 
                 {/* 2. BRAND */}
-                {!showMinimoColumns && !showManualColumns && !showPromoColumns && (
+                {!showMinimoColumns && !showManualColumns && (!showPromoColumns || showOldPriceColumns) && (
                   <th 
                     className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
                     onClick={() => handleSort('brand')}
@@ -651,14 +689,14 @@ export const ProductTable: React.FC<ProductTableProps> = ({
                 )}
 
                 {/* 3. XDE40 - Colonna stretta */}
-                {!showMinimoColumns && !showManualColumns && !showPromoColumns && (
+                {!showMinimoColumns && !showManualColumns && (!showPromoColumns || showOldPriceColumns) && (
                   <th className="px-1 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider max-w-[80px]">
                     PLC1
                   </th>
                 )}
 
                 {/* 4. XDE60 - Colonna stretta */}
-                {!showMinimoColumns && !showManualColumns && !showPromoColumns && (
+                {!showMinimoColumns && !showManualColumns && (!showPromoColumns || showOldPriceColumns) && (
                   <th className="px-1 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider max-w-[80px]">
                     PLC2
                   </th>
@@ -700,6 +738,21 @@ export const ProductTable: React.FC<ProductTableProps> = ({
                     {getSortIcon('apprli')}
                   </div>
                 </th>
+
+                {/* 12. PREZZO VECCHIO */}
+                {showOldPriceColumns && (
+                  <>
+                    <th className="px-3 py-3 text-left text-xs font-medium text-blue-700 uppercase tracking-wider bg-blue-100">
+                      PREZZO VECCHIO
+                    </th>
+                    <th className="px-3 py-3 text-left text-xs font-medium text-blue-700 uppercase tracking-wider bg-blue-100">
+                      +/-
+                    </th>
+                    <th className="px-3 py-3 text-left text-xs font-medium text-blue-700 uppercase tracking-wider bg-blue-100">
+                      VARIAZIONE
+                    </th>
+                  </>
+                )}
 
                 {/* 10. CONOU */}
                 <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -817,11 +870,12 @@ export const ProductTable: React.FC<ProductTableProps> = ({
                   key={product.id}
                   product={product}
                   index={index}
-                  showMinimoColumns={showMinimoColumns}
-                  showManualColumns={showManualColumns}
-                  showPromoColumns={showPromoColumns}
-                  showActionsColumn={showActionsColumn}
-                  promoEditMode={promoEditMode}
+                   showMinimoColumns={showMinimoColumns}
+                   showManualColumns={showManualColumns}
+                   showPromoColumns={showPromoColumns}
+                   showOldPriceColumns={showOldPriceColumns}
+                   showActionsColumn={showActionsColumn}
+                   promoEditMode={promoEditMode}
                   onProductUpdate={handleProductUpdate}
                   onProductDelete={handleProductDelete}
                   onAplibintDoubleClick={handleAplibintDoubleClick}
