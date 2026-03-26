@@ -1,0 +1,249 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Stili personalizzati aggiuntivi */
+body {
+  margin: 0;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
+    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
+    sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+code {
+  font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New',
+    monospace;
+}
+
+/* Stili per i popup della mappa */
+.municipality-click-popup .maplibregl-popup-content {
+  background: transparent;
+  border: none;
+  border-radius: 12px;
+  padding: 0;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
+  backdrop-filter: blur(10px);
+}
+
+.municipality-click-popup .maplibregl-popup-tip {
+  border-top-color: white;
+}
+
+.municipality-popup .maplibregl-popup-content {
+  background: rgba(31, 41, 55, 0.95);
+  border: 1px solid rgba(75, 85, 99, 0.5);
+  border-radius: 8px;
+  padding: 12px;
+  color: white;
+  font-size: 14px;
+  backdrop-filter: blur(8px);
+}
+
+.municipality-popup .maplibregl-popup-tip {
+  border-top-color: rgba(31, 41, 55, 0.95);
+}
+
+/* Animazione di entrata per i popup */
+.municipality-click-popup {
+  animation: popupFadeIn 0.2s ease-out;
+}
+
+@keyframes popupFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(-10px) scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+/* Stile per il pulsante di chiusura personalizzato */
+.municipality-click-popup button[aria-label="Chiudi"] {
+  transition: all 0.2s ease;
+}
+
+.municipality-click-popup button[aria-label="Chiudi"]:hover {
+  transform: scale(1.1);
+}
+
+/* Responsive per i popup */
+@media (max-width: 640px) {
+  .municipality-click-popup .maplibregl-popup-content {
+    min-width: 200px !important;
+    font-size: 13px;
+  }
+  
+  .municipality-click-popup h4 {
+    font-size: 16px;
+  }
+}
+
+/* Stile per il cursore quando sopra un comune cliccabile */
+.maplibregl-canvas-container.maplibregl-interactive {
+  cursor: grab;
+}
+
+.maplibregl-canvas-container.maplibregl-interactive:active {
+  cursor: grabbing;
+}
+
+/* Evidenziazione leggera dei comuni quando il mouse ci passa sopra */
+.municipality-hover-highlight {
+  transition: all 0.2s ease;
+}
+
+.municipality-hover-highlight:hover {
+  filter: brightness(1.1);
+}
+
+/* Stili per l'overlay dei comuni non assegnati */
+.unassigned-municipality-overlay {
+  stroke: #333333;
+  stroke-width: 2px;
+  stroke-dasharray: 4, 2;
+  fill: transparent;
+  animation: dashAnimation 1s linear infinite;
+}
+
+@keyframes dashAnimation {
+  0% {
+    stroke-dashoffset: 0;
+  }
+  100% {
+    stroke-dashoffset: 6;
+  }
+}
+
+/* Stile per il bordo del comune selezionato (assegnato) */
+.selected-municipality-border {
+  stroke: #8B5CF6;
+  stroke-width: 3px;
+  fill: transparent;
+}
+
+/* Stile per il bordo del comune non assegnato selezionato */
+.unassigned-municipality-border {
+  stroke: #333333;
+  stroke-width: 2px;
+  stroke-dasharray: 4, 2;
+  fill: transparent;
+  animation: dashAnimation 1s linear infinite;
+}
+
+/* Stili per migliorare la visibilità dei confini comunali */
+.municipality-borders {
+  stroke: #6B7280; /* Tailwind gray-500 - colore uniforme */
+  stroke-width: 1.5px;
+  stroke-opacity: 0.8;
+}
+
+.municipality-borders-zoomed {
+  stroke: #6B7280; /* Stesso colore coerente */
+  stroke-width: 1.5px;
+  stroke-opacity: 0.6;
+}
+
+/* Stili per i confini di tutti i comuni */
+.all-municipalities-borders {
+  stroke: #9CA3AF; /* Tailwind gray-400 - più visibile su sfondo scuro */
+  stroke-width: 1.5px;
+  stroke-opacity: 0.95;
+}
+
+.all-municipalities-borders-assigned {
+  stroke: #9CA3AF; /* Stesso colore coerente per tutti */
+  stroke-width: 1.5px;
+  stroke-opacity: 0.85;
+}
+
+/* Responsive design per la mappa */
+.map-container {
+  position: relative;
+  width: 100%;
+  height: clamp(475px, 79vh, 950px);
+  min-height: 475px;
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+/* Stili per touch devices */
+@media (hover: none) and (pointer: coarse) {
+  .municipality-click-popup .maplibregl-popup-content {
+    font-size: 16px; /* Previene zoom automatico su iOS */
+    min-width: 280px;
+  }
+  
+  .maplibregl-ctrl-group button {
+    min-width: 44px;
+    min-height: 44px;
+  }
+}
+
+/* High contrast mode support */
+@media (prefers-contrast: high) {
+  .municipality-borders {
+    stroke: #374151; /* Grigio scuro per high contrast */
+    stroke-width: 2px;
+  }
+  
+  .all-municipalities-borders {
+    stroke: #374151; /* Stesso colore per coerenza */
+    stroke-width: 2px;
+  }
+}
+
+/* Reduced motion support */
+@media (prefers-reduced-motion: reduce) {
+  .municipality-click-popup {
+    animation: none;
+  }
+  
+  .unassigned-municipality-overlay,
+  .unassigned-municipality-border {
+    animation: none;
+  }
+}
+
+/* Dark mode support */
+@media (prefers-color-scheme: dark) {
+  .municipality-borders {
+    stroke: #9CA3AF; /* Tailwind gray-400 per dark mode */
+  }
+  
+  .all-municipalities-borders {
+    stroke: #9CA3AF; /* Stesso colore per coerenza */
+  }
+}
+
+/* Animazioni per i componenti AI */
+@keyframes fade-in-up {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-fade-in-up {
+  animation: fade-in-up 0.5s ease-out;
+}
+
+@keyframes pulse-glow {
+  0%, 100% {
+    box-shadow: 0 0 20px rgba(139, 92, 246, 0.3);
+  }
+  50% {
+    box-shadow: 0 0 30px rgba(139, 92, 246, 0.6);
+  }
+}
+
+.pulse-glow {
+  animation: pulse-glow 2s ease-in-out infinite;
+}
