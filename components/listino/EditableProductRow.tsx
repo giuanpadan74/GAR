@@ -529,9 +529,13 @@ export const EditableProductRow: React.FC<EditableProductRowProps> = ({
     
     // Focus automatico sull'input dopo un breve delay per permettere il rendering
     setTimeout(() => {
-      if (firstInputRef.current) {
-        firstInputRef.current.focus();
-        firstInputRef.current.select();
+      const cellContainer = document.getElementById(`cell-${index}-${fieldName}`);
+      if (cellContainer) {
+        const input = cellContainer.querySelector('input');
+        if (input) {
+          input.focus();
+          input.select();
+        }
       }
     }, 50);
   };
@@ -544,9 +548,23 @@ export const EditableProductRow: React.FC<EditableProductRowProps> = ({
     }
   };
 
-  // Gestisce il tasto Enter per salvare e Escape per annullare
+  // Gestisce il tasto Enter e scorciatoie stile foglio di calcolo
   const handleFieldKeyDown = async (e: React.KeyboardEvent, fieldName: string, value: any) => {
-    if (e.key === 'Enter') {
+    // Scorciatoie:
+    // Tab o Alt -> Campo successivo
+    // Shift+Tab -> Campo precedente
+    // Ctrl+Alt -> Riga successiva (stesso campo)
+    // Enter -> Salva
+    const isTab = e.key === 'Tab';
+    const isAlt = e.key === 'Alt' && !e.ctrlKey;
+    const isCtrlAlt = (e.key === 'Alt' && e.ctrlKey) || (e.key === 'Control' && e.altKey);
+    
+    const isNextField = (isTab && !e.shiftKey) || isAlt;
+    const isPrevField = isTab && e.shiftKey;
+    const isNextRow = isCtrlAlt || e.key === 'Enter';
+    const isEnter = e.key === 'Enter';
+
+    if (isEnter || isNextField || isPrevField || isNextRow) {
       e.preventDefault();
       
       // Validazione del campo prima del salvataggio solo se il valore non è vuoto
@@ -574,8 +592,36 @@ export const EditableProductRow: React.FC<EditableProductRowProps> = ({
       await handleAutoSave(fieldName, value);
       setEditingField(null);
       
-      // Feedback visivo di successo
-      toast.success(`Campo ${fieldName} aggiornato con successo`);
+      if (isEnter) {
+        toast.success(`Campo ${fieldName} aggiornato`);
+      }
+      
+      // Navigazione stile foglio di calcolo
+      setTimeout(() => {
+        if (isNextField || isPrevField) {
+          // Trova tutti i campi editabili nella riga corrente
+          const cellsInRow = Array.from(document.querySelectorAll(`[data-editable-cell="true"][data-row="${index}"]`));
+          const currentIndex = cellsInRow.findIndex(el => el.getAttribute('data-field') === fieldName);
+          
+          let targetIndex = -1;
+          if (isNextField && currentIndex >= 0 && currentIndex < cellsInRow.length - 1) {
+            targetIndex = currentIndex + 1;
+          } else if (isPrevField && currentIndex > 0) {
+            targetIndex = currentIndex - 1;
+          }
+          
+          if (targetIndex !== -1) {
+            const nextCell = cellsInRow[targetIndex] as HTMLElement;
+            nextCell.click();
+          }
+        } else if (isNextRow) {
+          // Trova lo stesso campo nella riga successiva
+          const nextRowCell = document.querySelector(`[data-editable-cell="true"][data-row="${index + 1}"][data-field="${fieldName}"]`) as HTMLElement;
+          if (nextRowCell) {
+            nextRowCell.click();
+          }
+        }
+      }, 50); // Piccolo delay per permettere il re-rendering del campo appena salvato
       
     } else if (e.key === 'Escape') {
       e.preventDefault();
@@ -931,6 +977,10 @@ export const EditableProductRow: React.FC<EditableProductRowProps> = ({
       
       return (
         <span 
+          id={`cell-${index}-${field}`}
+          data-editable-cell="true"
+          data-row={index}
+          data-field={field}
           className={`
             ${className} 
             cursor-pointer 
@@ -944,7 +994,9 @@ export const EditableProductRow: React.FC<EditableProductRowProps> = ({
             ${showActionsColumn ? 'border border-transparent' : ''}
           `}
           onClick={() => handleFieldClick(field)}
-          title={showActionsColumn ? 'Click per modificare - INVIO per salvare, ESC per annullare' : ''}
+          onFocus={() => isFieldEditable && handleFieldClick(field)}
+          tabIndex={isFieldEditable ? 0 : undefined}
+          title={showActionsColumn ? 'Click per modificare o naviga la cella' : ''}
         >
           {displayValue || '-'}
         </span>
@@ -952,7 +1004,13 @@ export const EditableProductRow: React.FC<EditableProductRowProps> = ({
     }
 
     return (
-      <div className="relative">
+      <div 
+        id={`cell-${index}-${field}`}
+        data-editable-cell="true"
+        data-row={index}
+        data-field={field}
+        className="relative"
+      >
         {type === 'checkbox' ? (
           <input
             ref={isFirst ? firstInputRef : undefined}
@@ -1017,13 +1075,7 @@ export const EditableProductRow: React.FC<EditableProductRowProps> = ({
           {validationErrors[field]}
         </div>
       )}
-      {/* Indicatore di editing attivo */}
-      {isCurrentFieldEditing && !validationErrors[field] && (
-        <div className="absolute top-full left-0 z-10 mt-1 px-2 py-1 text-xs text-blue-700 bg-blue-100 rounded shadow-lg whitespace-nowrap">
-          <Edit2 className="inline w-3 h-3 mr-1" />
-          INVIO per salvare, ESC per annullare - Click fuori per salvare
-        </div>
-      )}
+
     </div>
   );
 };
