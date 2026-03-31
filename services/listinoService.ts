@@ -157,10 +157,25 @@ export class ListinoService {
         console.log('  ✅ APLIB1 filter applied to query');
       }
 
+      // Filtro obsoleti
+      if (filters?.obsoleto === true) {
+        query = query.eq('obsoleto', true);
+      } else {
+        // Di default, nascondi i prodotti obsoleti
+        query = query.or('obsoleto.eq.false,obsoleto.is.null');
+      }
+
       // Applica ordinamento
       if (filters?.sort_field && filters.sort_field !== 'none') {
         const ascending = filters.sort_direction === 'asc';
-        query = query.order(ListinoService.mapSortField(filters.sort_field as string), { ascending });
+        const sortColumn = ListinoService.mapSortField(filters.sort_field as string);
+        query = query.order(sortColumn, { ascending });
+        
+        // Regola speciale: se ordiniamo per descrizione (o apdesi), aggiungiamo un ordinamento secondario
+        // per quantità imballo (appesf) in ordine decrescente
+        if (sortColumn === 'descrizione' || sortColumn === 'apdesi') {
+          query = query.order('appesf', { ascending: false });
+        }
       } else {
         // Ordinamento di default per codice prodotto
         query = query.order('apcpro', { ascending: true });
@@ -1613,11 +1628,26 @@ export class ListinoService {
       if (filters?.aplib1) {
         query = query.eq('aplib1', filters.aplib1);
       }
+      
+      // Filtro obsoleti in paginazione
+      if (filters?.obsoleto === true) {
+        query = query.eq('obsoleto', true);
+      } else {
+        // Di default, nascondi i prodotti obsoleti
+        query = query.or('obsoleto.eq.false,obsoleto.is.null');
+      }
 
       // Ordinamento
       if (filters?.sort_field && filters.sort_field !== 'none') {
         const ascending = filters.sort_direction === 'asc';
-        query = query.order(ListinoService.mapSortField(filters.sort_field as string), { ascending });
+        const sortColumn = ListinoService.mapSortField(filters.sort_field as string);
+        query = query.order(sortColumn, { ascending });
+        
+        // Regola speciale: se ordiniamo per descrizione (o apdesi), aggiungiamo un ordinamento secondario
+        // per quantità imballo (appesf) in ordine decrescente
+        if (sortColumn === 'descrizione' || sortColumn === 'apdesi') {
+          query = query.order('appesf', { ascending: false });
+        }
       } else {
         query = query.order('apcpro', { ascending: true });
       }
