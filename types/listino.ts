@@ -157,6 +157,7 @@ export interface ProductFilters {
   xde40?: string;
   xde60?: string;
   aplib1?: string;
+  obsoleto?: boolean;
   page?: number;
   page_size?: number;
 }

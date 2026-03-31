@@ -92,13 +92,14 @@ export const ProdottiTab: React.FC = () => {
     loadProducts({ page: 1 });
   }, [filters.brand, filters.apdesi, filters.xde40, filters.xde60, filters.aplib1]);
 
-  const loadProducts = async (opts?: { page?: number }) => {
+  const loadProducts = async (opts?: { page?: number; overrideFilters?: ProductFiltersType }) => {
     try {
       setLoading(true);
       setError(null);
       const currentPage = opts?.page ?? page;
+      const currentFilters = opts?.overrideFilters ?? filters;
       const filtersToSend: ProductFiltersType = {
-        ...filters,
+        ...currentFilters,
         sort_field: sortField,
         sort_direction: sortDirection,
         page: currentPage,
@@ -358,6 +359,28 @@ export const ProdottiTab: React.FC = () => {
                 </button>
               </div>
 
+              {/* Pulsante Obsoleti - Solo ADMIN */}
+              {isAdmin() && (
+                <div className="grid grid-cols-1 gap-2">
+                  <button
+                    onClick={() => {
+                      const newValue = !filters.obsoleto;
+                      const newFilters = { ...filters, obsoleto: newValue };
+                      setFilters(newFilters);
+                      loadProducts({ page: 1, overrideFilters: newFilters });
+                    }}
+                    className={`flex items-center justify-center space-x-2 px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
+                      filters.obsoleto
+                        ? 'bg-red-200 text-red-800 shadow-sm'
+                        : 'bg-red-50 text-red-600 hover:bg-red-100'
+                    }`}
+                  >
+                    {filters.obsoleto ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                    <span>Obsoleti</span>
+                  </button>
+                </div>
+              )}
+
               {/* Rimosso: Pulsante Aggiorna IMP/PROVV (ora non più necessario) */}
 
               <div className="grid grid-cols-1 gap-2">
@@ -424,17 +447,36 @@ export const ProdottiTab: React.FC = () => {
 
               {/* Pulsante Azioni - Disponibile solo per ADMIN */}
               {isAdmin() && (
-                <button
-                  onClick={toggleActionsColumn}
-                  className={`flex items-center space-x-2 px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
-                    showActionsColumn
-                      ? 'bg-purple-200 text-purple-800 shadow-sm'
-                      : 'bg-purple-50 text-purple-600 hover:bg-purple-100'
-                  }`}
-                >
-                  {showActionsColumn ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                  <span>Modifica</span>
-                </button>
+                <>
+                  <button
+                    onClick={toggleActionsColumn}
+                    className={`flex items-center space-x-2 px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
+                      showActionsColumn
+                        ? 'bg-purple-200 text-purple-800 shadow-sm'
+                        : 'bg-purple-50 text-purple-600 hover:bg-purple-100'
+                    }`}
+                  >
+                    {showActionsColumn ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                    <span>Modifica</span>
+                  </button>
+
+                  <button
+                    onClick={() => {
+                      const newValue = !filters.obsoleto;
+                      const newFilters = { ...filters, obsoleto: newValue };
+                      setFilters(newFilters);
+                      loadProducts({ page: 1, overrideFilters: newFilters });
+                    }}
+                    className={`flex items-center space-x-2 px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
+                      filters.obsoleto
+                        ? 'bg-red-200 text-red-800 shadow-sm'
+                        : 'bg-red-50 text-red-600 hover:bg-red-100'
+                    }`}
+                  >
+                    {filters.obsoleto ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                    <span>Obsoleti</span>
+                  </button>
+                </>
               )}
 
               <button

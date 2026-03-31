@@ -993,8 +993,29 @@ export const EditableProductRow: React.FC<EditableProductRowProps> = ({
             ${field === 'descrizione' && product.obsoleto ? 'line-through text-gray-500' : ''}
             ${showActionsColumn ? 'border border-transparent' : ''}
           `}
-          onClick={() => handleFieldClick(field)}
-          onFocus={() => isFieldEditable && handleFieldClick(field)}
+          onClick={(e) => {
+            if (isFieldEditable && field === 'obsoleto') {
+              e.preventDefault();
+              const newValue = !editedFields[field];
+              handleFieldChange(field, newValue);
+              handleAutoSave(field, newValue);
+            } else {
+              handleFieldClick(field);
+            }
+          }}
+          onFocus={() => {
+            if (isFieldEditable && field !== 'obsoleto') {
+              handleFieldClick(field);
+            }
+          }}
+          onKeyDown={(e) => {
+            if (isFieldEditable && field === 'obsoleto' && (e.key === ' ' || e.key === 'Enter')) {
+              e.preventDefault();
+              const newValue = !editedFields[field];
+              handleFieldChange(field, newValue);
+              handleAutoSave(field, newValue);
+            }
+          }}
           tabIndex={isFieldEditable ? 0 : undefined}
           title={showActionsColumn ? 'Click per modificare o naviga la cella' : ''}
         >
