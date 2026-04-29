@@ -280,32 +280,23 @@ const ProductCard: React.FC<{
           </>
         )}
 
-        {/* Sezione Vecchio Prezzo (mobile) */}
+        {/* Sezione Prezzi Vecchi (mobile) */}
         {showOldPriceColumns && (
           <>
             <div className="space-y-1">
-              <div className="text-xs text-blue-600">P. Vecchio</div>
+              <div className="text-xs text-blue-600">P. Aprile 2026</div>
               <div className="text-sm font-medium text-blue-900 bg-blue-50 px-2 py-1 rounded">
-                {product.prezzo_old !== null && product.prezzo_old !== undefined
-                  ? `€ ${product.prezzo_old.toFixed(2)}` 
+                {product.prezzo_aprile_2026 !== null && product.prezzo_aprile_2026 !== undefined
+                  ? `€ ${product.prezzo_aprile_2026.toFixed(2)}`
                   : '-'
                 }
               </div>
             </div>
             <div className="space-y-1">
-              <div className="text-xs text-blue-600">+/-</div>
+              <div className="text-xs text-blue-600">P. Marzo 2026</div>
               <div className="text-sm font-medium text-blue-900 bg-blue-50 px-2 py-1 rounded">
-                {(product.varprezz !== null && product.varprezz !== undefined)
-                  ? `${product.varprezz > 0 ? '+' : ''}${product.varprezz.toFixed(2)}` 
-                  : '-'
-                }
-              </div>
-            </div>
-            <div className="space-y-1">
-              <div className="text-xs text-blue-600">Variazione</div>
-              <div className="text-sm font-medium text-blue-900 bg-blue-50 px-2 py-1 rounded">
-                {product.variaz !== null && product.variaz !== undefined
-                  ? `${(product.variaz * 100).toFixed(2)}%` 
+                {product.prezzo_marzo_2026 !== null && product.prezzo_marzo_2026 !== undefined
+                  ? `€ ${product.prezzo_marzo_2026.toFixed(2)}`
                   : '-'
                 }
               </div>
@@ -739,17 +730,14 @@ export const ProductTable: React.FC<ProductTableProps> = ({
                   </div>
                 </th>
 
-                {/* 12. PREZZO VECCHIO */}
+                {/* 12. PREZZI VECCHI */}
                 {showOldPriceColumns && (
                   <>
                     <th className="px-3 py-3 text-left text-xs font-medium text-blue-700 uppercase tracking-wider bg-blue-100">
-                      PREZZO VECCHIO
+                      PREZZO APRILE 2026
                     </th>
                     <th className="px-3 py-3 text-left text-xs font-medium text-blue-700 uppercase tracking-wider bg-blue-100">
-                      +/-
-                    </th>
-                    <th className="px-3 py-3 text-left text-xs font-medium text-blue-700 uppercase tracking-wider bg-blue-100">
-                      VARIAZIONE
+                      PREZZO MARZO 2026
                     </th>
                   </>
                 )}

@@ -61,6 +61,7 @@ export class ListinoService {
       imponibile: 'imponibile',
       provv: 'provv',
       prezzo_old: 'prezzo_old',
+      prezzo_aprile_2026: 'prezzo_aprile_2026',
       variaz: 'variaz'
     };
 
