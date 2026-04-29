@@ -137,7 +137,8 @@ interface EditableFields {
   promoDAL: string;
   promoAL: string;
   promoPrezzo: string;
-  prezzo_old: string;
+  prezzo_aprile_2026: string;
+  prezzo_marzo_2026: string;
   varprezz: string;
   variaz: string;
   obsoleto: boolean;
@@ -181,7 +182,8 @@ export const EditableProductRow: React.FC<EditableProductRowProps> = ({
     promoDAL: formatDateToItalian(product.promoDAL || ''),
     promoAL: formatDateToItalian(product.promoAL || ''),
     promoPrezzo: product.promoPrezzo?.toString() || '',
-    prezzo_old: product.prezzo_old?.toString() || '',
+    prezzo_aprile_2026: product.prezzo_aprile_2026?.toString() || '',
+    prezzo_marzo_2026: product.prezzo_marzo_2026?.toString() || '',
     varprezz: product.varprezz?.toString() || '',
     variaz: product.variaz?.toString() || '',
     obsoleto: product.obsoleto || false
@@ -209,7 +211,8 @@ export const EditableProductRow: React.FC<EditableProductRowProps> = ({
       promoDAL: editingField === 'promoDAL' ? prev.promoDAL : formatDateToItalian(product.promoDAL || ''),
       promoAL: editingField === 'promoAL' ? prev.promoAL : formatDateToItalian(product.promoAL || ''),
       promoPrezzo: editingField === 'promoPrezzo' ? prev.promoPrezzo : (product.promoPrezzo?.toString() || ''),
-      prezzo_old: editingField === 'prezzo_old' ? prev.prezzo_old : (product.prezzo_old?.toString() || ''),
+      prezzo_aprile_2026: editingField === 'prezzo_aprile_2026' ? prev.prezzo_aprile_2026 : (product.prezzo_aprile_2026?.toString() || ''),
+      prezzo_marzo_2026: editingField === 'prezzo_marzo_2026' ? prev.prezzo_marzo_2026 : (product.prezzo_marzo_2026?.toString() || ''),
       varprezz: editingField === 'varprezz' ? prev.varprezz : (product.varprezz?.toString() || ''),
       variaz: editingField === 'variaz' ? prev.variaz : (product.variaz?.toString() || ''),
       obsoleto: editingField === 'obsoleto' ? prev.obsoleto : (product.obsoleto || false)
@@ -460,9 +463,9 @@ export const EditableProductRow: React.FC<EditableProductRowProps> = ({
       updates[fieldName] = value;
 
       // Se stiamo aggiornando il listino o il vecchio prezzo, ricalcola la variazione
-      if (fieldName === 'apprli' || fieldName === 'prezzo_old') {
+      if (fieldName === 'apprli' || fieldName === 'prezzo_aprile_2026') {
         const listPrice = fieldName === 'apprli' ? parseFloat(value.toString()) : parseFloat(editedFields.apprli);
-        const oldPrice = fieldName === 'prezzo_old' ? parseFloat(value.toString()) : parseFloat(editedFields.prezzo_old);
+        const oldPrice = fieldName === 'prezzo_aprile_2026' ? parseFloat(value.toString()) : parseFloat(editedFields.prezzo_aprile_2026);
         
         if (!isNaN(listPrice) && !isNaN(oldPrice)) {
           // Ricalcola varprezz (+/- in euro)
@@ -708,11 +711,18 @@ export const EditableProductRow: React.FC<EditableProductRowProps> = ({
           updates.aplib1 = editedFields.aplib1;
         }
 
-        // PREZZO VECCHIO E VARIAZIONE
-        if (editedFields.prezzo_old !== (product.prezzo_old?.toString() || '')) {
-          const numericValue = parseFloat(editedFields.prezzo_old);
+        // PREZZI VECCHI E VARIAZIONE
+        if (editedFields.prezzo_aprile_2026 !== (product.prezzo_aprile_2026?.toString() || '')) {
+          const numericValue = parseFloat(editedFields.prezzo_aprile_2026);
           if (!isNaN(numericValue)) {
-            updates.prezzo_old = numericValue;
+            updates.prezzo_aprile_2026 = numericValue;
+          }
+        }
+
+        if (editedFields.prezzo_marzo_2026 !== (product.prezzo_marzo_2026?.toString() || '')) {
+          const numericValue = parseFloat(editedFields.prezzo_marzo_2026);
+          if (!isNaN(numericValue)) {
+            updates.prezzo_marzo_2026 = numericValue;
           }
         }
 
@@ -805,10 +815,10 @@ export const EditableProductRow: React.FC<EditableProductRowProps> = ({
     setEditedFields(prev => {
       const newState = { ...prev, [field]: value };
       
-      // Se cambia apprli o prezzo_old, ricalcola varprezz e variaz
-      if (field === 'apprli' || field === 'prezzo_old') {
+      // Se cambia apprli o prezzo_aprile_2026, ricalcola varprezz e variaz
+      if (field === 'apprli' || field === 'prezzo_aprile_2026') {
         const listPrice = parseFloat(field === 'apprli' ? value as string : prev.apprli);
-        const oldPrice = parseFloat(field === 'prezzo_old' ? value as string : prev.prezzo_old);
+        const oldPrice = parseFloat(field === 'prezzo_aprile_2026' ? value as string : prev.prezzo_aprile_2026);
         
         if (!isNaN(listPrice) && !isNaN(oldPrice)) {
           newState.varprezz = (listPrice - oldPrice).toFixed(2);
@@ -949,8 +959,11 @@ export const EditableProductRow: React.FC<EditableProductRowProps> = ({
       } else if (field === 'promoPrezzo') {
         const val = editedFields.promoPrezzo;
         displayValue = val ? `€${parseFloat(val).toFixed(2)}` : '-';
-      } else if (field === 'prezzo_old') {
-        const val = editedFields.prezzo_old;
+      } else if (field === 'prezzo_aprile_2026') {
+        const val = editedFields.prezzo_aprile_2026;
+        displayValue = val ? `€${parseFloat(val).toFixed(2)}` : '-';
+      } else if (field === 'prezzo_marzo_2026') {
+        const val = editedFields.prezzo_marzo_2026;
         displayValue = val ? `€${parseFloat(val).toFixed(2)}` : '-';
       } else if (field === 'varprezz') {
         const val = editedFields.varprezz;
@@ -1167,17 +1180,14 @@ export const EditableProductRow: React.FC<EditableProductRowProps> = ({
         )}
       </td>
 
-      {/* PREZZO VECCHIO */}
+      {/* PREZZI VECCHI */}
       {showOldPriceColumns && (
         <>
           <td className="px-3 py-3 text-sm text-blue-900 bg-blue-50 text-right">
-            {renderEditableCell({ field: "prezzo_old", type: "number", className: "text-blue-900" })}
+            {renderEditableCell({ field: "prezzo_aprile_2026", type: "number", className: "text-blue-900" })}
           </td>
-          <td className="px-3 py-3 text-sm bg-blue-50 text-right">
-            {renderEditableCell({ field: "varprezz", type: "number" })}
-          </td>
-          <td className="px-3 py-3 text-sm bg-blue-50 text-right">
-            {renderEditableCell({ field: "variaz", type: "number" })}
+          <td className="px-3 py-3 text-sm text-blue-900 bg-blue-50 text-right">
+            {renderEditableCell({ field: "prezzo_marzo_2026", type: "number", className: "text-blue-900" })}
           </td>
         </>
       )}

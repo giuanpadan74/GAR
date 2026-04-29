@@ -74,7 +74,9 @@ export interface Product {
   // Campi esistenti mantenuti per compatibilità
   is_active: boolean;
   obsoleto?: boolean; // Campo per marcare prodotti obsoleti
-  prezzo_old?: number; // Vecchio prezzo
+  prezzo_old?: number; // Vecchio prezzo (deprecated - usare prezzo_aprile_2026)
+  prezzo_aprile_2026?: number; // Prezzo di aprile 2026 per confronto variazioni
+  prezzo_marzo_2026?: number; // Prezzo di marzo 2026 per confronto variazioni
   varprezz?: number; // Variazione prezzo in euro
   variaz?: number; // Variazione prezzo percentuale
   created_at: string;
