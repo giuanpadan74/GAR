@@ -12,6 +12,7 @@ import {
   type LoginCredentials,
   type AuthServiceResponse
 } from '../services/authServiceSimple';
+import { userAccessLogService } from '../services/userAccessLogService';
 
 export interface AuthContextType {
   user: ProfileData | null;
@@ -57,6 +58,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
       const result = await authServiceSimple.signIn(credentials);
       if (result.success && result.data) {
         setUser(result.data);
+        void userAccessLogService.trackSuccessfulAccess(result.data.id);
       }
       return result;
     } finally {
