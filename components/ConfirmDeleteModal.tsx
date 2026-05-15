@@ -1,5 +1,5 @@
 import React from 'react';
-import { XIcon, TrashIcon } from './Icons';
+import { SpinnerIcon, XIcon, TrashIcon } from './Icons';
 
 interface ConfirmDeleteModalProps {
     isOpen: boolean;
@@ -8,6 +8,7 @@ interface ConfirmDeleteModalProps {
     title: string;
     message: string;
     itemName?: string;
+    loading?: boolean;
 }
 
 const ConfirmDeleteModal: React.FC<ConfirmDeleteModalProps> = ({ 
@@ -16,7 +17,8 @@ const ConfirmDeleteModal: React.FC<ConfirmDeleteModalProps> = ({
     onConfirm, 
     title, 
     message, 
-    itemName 
+    itemName,
+    loading = false
 }) => {
     if (!isOpen) return null;
 
@@ -49,17 +51,23 @@ const ConfirmDeleteModal: React.FC<ConfirmDeleteModalProps> = ({
                     <button 
                         type="button" 
                         onClick={onClose} 
-                        className="text-gray-300 hover:text-white px-4 py-2 rounded-lg"
+                        className="text-gray-300 hover:text-white px-4 py-2 rounded-lg disabled:opacity-50"
+                        disabled={loading}
                     >
                         Annulla
                     </button>
                     <button 
                         type="button"
                         onClick={onConfirm}
-                        className="bg-red-600 text-white px-6 py-2 rounded-lg font-semibold hover:bg-red-700 transition-colors flex items-center"
+                        className="bg-red-600 text-white px-6 py-2 rounded-lg font-semibold hover:bg-red-700 transition-colors flex items-center disabled:cursor-not-allowed disabled:opacity-50"
+                        disabled={loading}
                     >
-                        <TrashIcon className="w-4 h-4 mr-2" />
-                        Elimina
+                        {loading ? (
+                            <SpinnerIcon className="w-4 h-4 mr-2 animate-spin" />
+                        ) : (
+                            <TrashIcon className="w-4 h-4 mr-2" />
+                        )}
+                        {loading ? 'Eliminazione...' : 'Elimina'}
                     </button>
                 </div>
             </div>
