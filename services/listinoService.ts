@@ -18,6 +18,10 @@ import type {
   ListinoStats,
   ValidationResult,
   ImportResult,
+  ImportPromoPreview,
+  ImportPromoResult,
+  ParsedPromoRow,
+  PromoProductInfo,
   Scale,
   CalculationResult,
   ScaleOption,
@@ -61,6 +65,7 @@ export class ListinoService {
       imponibile: 'imponibile',
       provv: 'provv',
       prezzo_old: 'prezzo_old',
+      prezzo_aprile_2026: 'prezzo_aprile_2026',
       variaz: 'variaz'
     };
 
@@ -163,6 +168,15 @@ export class ListinoService {
       } else {
         // Di default, nascondi i prodotti obsoleti
         query = query.or('obsoleto.eq.false,obsoleto.is.null');
+      }
+
+      // Filtro solo prodotti in promo (hanno date promo e prezzo valorizzati)
+      if (filters?.promo_only === true) {
+        query = query
+          .not('promoDAL', 'is', null)
+          .not('promoAL', 'is', null)
+          .not('promoPrezzo', 'is', null)
+          .gt('promoPrezzo', 0);
       }
 
       // Applica ordinamento
@@ -969,6 +983,435 @@ export class ListinoService {
     return result;
   }
 
+  // =====================================================
+  // IMPORT PROMOZIONI - Funzione dedicata
+  // =====================================================
+
+  /**
+   * Parsa il file Excel delle promozioni.
+   * Colonne attese: CPROD (codice prodotto), CIMB (codice imballo), LISTINO PROMO (prezzo promo).
+   * Restituisce le righe parsed senza applicare modifiche al DB.
+   */
+  static parsePromoExcel(file: File): Promise<{ rows: ParsedPromoRow[]; errors: string[]; duplicateCodes: string[] }> {
+    return (async () => {
+      const rows: ParsedPromoRow[] = [];
+      const errors: string[] = [];
+      const duplicateCodes: string[] = [];
+
+      try {
+        const arrayBuffer = await file.arrayBuffer();
+        const workbook = XLSX.read(arrayBuffer, { type: 'array' });
+        const sheetName = workbook.SheetNames[0];
+        const worksheet = workbook.Sheets[sheetName];
+        const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 }) as any[][];
+
+        if (jsonData.length < 2) {
+          errors.push('Il file Excel deve contenere almeno una riga di intestazione e una di dati');
+          return { rows, errors, duplicateCodes };
+        }
+
+        const rawHeaders = jsonData[0] as any[];
+        const headers = rawHeaders.map((header, index) => {
+          if (header === null || header === undefined) return `Column_${index + 1}`;
+          return header.toString().trim();
+        });
+
+        // Mappa colonne attese (case-insensitive, varianti)
+        const colMap = this.mapPromoHeaders(headers);
+
+        if (colMap.apcpro === undefined) {
+          errors.push(
+            `Colonna CPROD non trovata. Intestazioni trovate: ${headers.join(', ')}`
+          );
+          return { rows, errors, duplicateCodes };
+        }
+        if (colMap.apcimb === undefined) {
+          errors.push(
+            `Colonna CIMB non trovata. Intestazioni trovate: ${headers.join(', ')}`
+          );
+          return { rows, errors, duplicateCodes };
+        }
+
+        const dataRows = jsonData.slice(1);
+        // Chiave univoca: coppia apcpro + apcimb
+        const seenKeys = new Set<string>();
+        const missingImb: string[] = [];
+
+        for (let i = 0; i < dataRows.length; i++) {
+          const row = dataRows[i];
+          const rowNumber = i + 2;
+
+          const cprodRaw = colMap.apcpro !== undefined ? row[colMap.apcpro] : undefined;
+          const apcpro = cprodRaw !== undefined && cprodRaw !== null
+            ? cprodRaw.toString().trim()
+            : '';
+
+          if (!apcpro) {
+            // riga vuota: salta silenziosamente
+            continue;
+          }
+
+          const cimbRaw = colMap.apcimb !== undefined ? row[colMap.apcimb] : undefined;
+          let apcimb = cimbRaw !== undefined && cimbRaw !== null
+            ? cimbRaw.toString().trim()
+            : '';
+
+          // Se apcimb è vuoto, prova a usare imballo come fallback
+          if (!apcimb && colMap.imballo !== undefined) {
+            const imbRaw = row[colMap.imballo];
+            if (imbRaw !== undefined && imbRaw !== null) {
+              apcimb = imbRaw.toString().trim();
+            }
+          }
+
+          if (!apcimb) {
+            // apcimb mancante: non è una chiave valida, segnala e salta
+            missingImb.push(apcpro);
+            continue;
+          }
+
+          // Aggiorna row.apcimb con il valore最终的 (potrebbe venire da imballo)
+          (row as any).apcimb = apcimb;
+
+          const compositeKey = `${apcpro}|${apcimb}`;
+          if (seenKeys.has(compositeKey)) {
+            duplicateCodes.push(compositeKey);
+            continue;
+          }
+          seenKeys.add(compositeKey);
+
+          let promoPrezzo: number | undefined;
+          if (colMap.promoPrezzo !== undefined) {
+            const v = row[colMap.promoPrezzo];
+            if (v !== undefined && v !== null && v !== '') {
+              const num = typeof v === 'number' ? v : parseFloat(v.toString().replace(',', '.'));
+              if (!isNaN(num)) promoPrezzo = num;
+            }
+          }
+
+          let descrizione: string | undefined;
+          if (colMap.descrizione !== undefined) {
+            const v = row[colMap.descrizione];
+            if (v !== undefined && v !== null && v !== '') {
+              descrizione = v.toString().trim();
+            }
+          }
+
+          let imballo: string | undefined;
+          if (colMap.imballo !== undefined) {
+            const v = row[colMap.imballo];
+            if (v !== undefined && v !== null && v !== '') {
+              imballo = v.toString().trim();
+            }
+          }
+
+          let qty: number | undefined;
+          if (colMap.qty !== undefined) {
+            const v = row[colMap.qty];
+            if (v !== undefined && v !== null && v !== '') {
+              const num = typeof v === 'number' ? v : parseFloat(v.toString().replace(',', '.'));
+              if (!isNaN(num)) qty = num;
+            }
+          }
+
+          let uvr: string | undefined;
+          if (colMap.uvr !== undefined) {
+            const v = row[colMap.uvr];
+            if (v !== undefined && v !== null && v !== '') {
+              uvr = v.toString().trim();
+            }
+          }
+
+          let listino: number | undefined;
+          if (colMap.listino !== undefined) {
+            const v = row[colMap.listino];
+            if (v !== undefined && v !== null && v !== '') {
+              const num = typeof v === 'number' ? v : parseFloat(v.toString().replace(',', '.'));
+              if (!isNaN(num)) listino = num;
+            }
+          }
+
+          rows.push({ apcpro, apcimb, promoPrezzo, descrizione, imballo, qty, uvr, listino, rowNumber });
+        }
+
+        if (missingImb.length > 0) {
+          errors.push(
+            `${missingImb.length} righe senza CIMB (chiave incompleta, righe saltate): ${missingImb.slice(0, 10).join(', ')}${missingImb.length > 10 ? '...' : ''}`
+          );
+        }
+      } catch (error) {
+        errors.push(`Errore lettura file: ${error instanceof Error ? error.message : 'errore sconosciuto'}`);
+      }
+
+      return { rows, errors, duplicateCodes };
+    })();
+  }
+
+  /**
+   * Mappa le intestazioni Excel alle posizioni delle colonne per l'import promo.
+   * Colonne riconosciute: CPROD -> apcpro, CIMB -> apcimb, LISTINO PROMO -> promoPrezzo
+   */
+  static mapPromoHeaders(headers: string[]): { apcpro?: number; apcimb?: number; promoPrezzo?: number; descrizione?: number; imballo?: number; qty?: number; uvr?: number; listino?: number } {
+    const mapping: { apcpro?: number; apcimb?: number; promoPrezzo?: number; descrizione?: number; imballo?: number; qty?: number; uvr?: number; listino?: number } = {};
+
+    const variants = {
+      apcpro: ['cprod', 'apcpro', 'codice', 'codice prodotto', 'cproud'],
+      apcimb: ['cimb', 'apcimb', 'codice imballo'],
+      promoPrezzo: ['listino promo', 'promo prezzo', 'prezzo promo', 'promo', 'listino_promo', 'prezzo_promo'],
+      descrizione: ['descrizione', 'descr', 'description'],
+      imballo: ['imballo', 'descr imballo', 'descrizione imballo'],
+      qty: ['qty', 'quantita', 'quantità', 'qta', 'quantity'],
+      uvr: ['uvr', 'unità', 'unita', 'unità di vendita'],
+      listino: ['listino', 'prezzo listino', 'prezzo']
+    };
+
+    console.log('🔍 mapPromoHeaders - headers:', headers);
+
+    for (const [field, possible] of Object.entries(variants)) {
+      for (let i = 0; i < headers.length; i++) {
+        const h = headers[i]?.toString().trim().toLowerCase();
+        if (h && possible.some(p => p.toLowerCase() === h)) {
+          console.log(`  ✅ Found "${field}" at index ${i} (header: "${headers[i]}")`);
+          (mapping as any)[field] = i;
+          break;
+        }
+      }
+    }
+
+    console.log('🔍 mapPromoHeaders - mapping result:', mapping);
+    return mapping;
+  }
+
+  /**
+   * Crea una preview dell'import promo: cerca i prodotti nel DB per apcpro,
+   * individua quelli non trovati e quelli che hanno già campi promo valorizzati.
+   * Non applica alcuna modifica.
+   */
+  static async previewPromoImport(
+    rows: ParsedPromoRow[],
+    promoDAL: string,
+    promoAL: string
+  ): Promise<ImportPromoPreview> {
+    const preview: ImportPromoPreview = {
+      totalRows: rows.length,
+      parsedRows: rows,
+      foundProducts: [],
+      notFoundCodes: [],
+      existingPromoCount: 0,
+      duplicateCodes: [],
+      errors: []
+    };
+
+    if (rows.length === 0) {
+      return preview;
+    }
+
+    // Validazione date
+    const dateError = this.validatePromoDates(promoDAL, promoAL);
+    if (dateError) {
+      preview.errors.push(dateError);
+      return preview;
+    }
+
+    const codes = rows.map(r => r.apcpro);
+
+    try {
+      // Recupera tutti i prodotti corrispondenti ai codici apcpro (batch).
+      // La chiave di ricerca è aplibint (concatenazione di apcpro + apcimb).
+      const batchSize = 100;
+      const allProducts: Product[] = [];
+      const uniqueCodes = Array.from(new Set(codes));
+      for (let i = 0; i < uniqueCodes.length; i += batchSize) {
+        const batch = uniqueCodes.slice(i, i + batchSize);
+        const { data, error } = await supabase
+          .from('products')
+          .select('id, apcpro, apcimb, descrizione, promoDAL, promoAL, promoPrezzo, aplibint')
+          .in('apcpro', batch);
+
+        if (error) {
+          preview.errors.push(`Errore recupero prodotti: ${error.message}`);
+          continue;
+        }
+        if (data) allProducts.push(...(data as unknown as Product[]));
+      }
+
+      // Indicizza per aplibint
+      const byAplibint = new Map<string, Product>();
+      allProducts.forEach(p => {
+        if (p.aplibint) byAplibint.set(p.aplibint, p);
+      });
+
+      for (const row of rows) {
+        // La chiave è la concatenazione CPROD + CIMB come fa il database con aplibint
+        const key = `${row.apcpro}${row.apcimb}`;
+        console.log(`🔍 Row key: "${key}" (apcpro="${row.apcpro}", apcimb="${row.apcimb}")`);
+        const product = byAplibint.get(key);
+        if (!product) {
+          console.log(`❌ Not found: apcpro="${row.apcpro}", apcimb="${row.apcimb}", descrizione="${row.descrizione}", imballo="${row.imballo}"`);
+          preview.notFoundCodes.push({
+            apcpro: row.apcpro,
+            apcimb: row.apcimb,
+            descrizione: row.descrizione,
+            imballo: row.imballo,
+            qty: row.qty,
+            uvr: row.uvr,
+            listino: row.listino,
+            listinoPromo: row.promoPrezzo,
+            rowNumber: row.rowNumber
+          });
+          continue;
+        }
+
+        const hasExistingPromo =
+          (product.promoDAL !== undefined && product.promoDAL !== null && product.promoDAL !== '') ||
+          (product.promoAL !== undefined && product.promoAL !== null && product.promoAL !== '') ||
+          (product.promoPrezzo !== undefined && product.promoPrezzo !== null && product.promoPrezzo > 0);
+
+        const info: PromoProductInfo = {
+          apcpro: row.apcpro,
+          productId: product.id,
+          descrizione: product.descrizione,
+          hasExistingPromo,
+          currentPromoDAL: product.promoDAL,
+          currentPromoAL: product.promoAL,
+          currentPromoPrezzo: product.promoPrezzo,
+          newPromoPrezzo: row.promoPrezzo,
+          newApcimb: row.apcimb
+        };
+        preview.foundProducts.push(info);
+        if (hasExistingPromo) preview.existingPromoCount++;
+      }
+    } catch (error) {
+      preview.errors.push(`Errore preview: ${error instanceof Error ? error.message : 'errore sconosciuto'}`);
+    }
+
+    return preview;
+  }
+
+  /**
+   * Applica le promo: aggiorna per ogni prodotto trovato i campi
+   * apcimb, promoPrezzo, promoDAL, promoAL.
+   * Restituisce il risultato dettagliato con i codici non trovati.
+   */
+  static async executePromoImport(
+    rows: ParsedPromoRow[],
+    promoDAL: string,
+    promoAL: string
+  ): Promise<ImportPromoResult> {
+    const result: ImportPromoResult = {
+      success: false,
+      totalRows: rows.length,
+      updatedRows: 0,
+      skippedRows: 0,
+      notFoundCodes: [],
+      updatedCodes: [],
+      errors: [],
+      warnings: []
+    };
+
+    if (rows.length === 0) {
+      result.errors.push('Nessuna riga da importare');
+      return result;
+    }
+
+    const dateError = this.validatePromoDates(promoDAL, promoAL);
+    if (dateError) {
+      result.errors.push(dateError);
+      return result;
+    }
+
+    const codes = rows.map(r => r.apcpro);
+
+    try {
+      // Recupera id prodotti per chiave aplibint (batch su apcpro)
+      const batchSize = 100;
+      const idByAplibint = new Map<string, string>();
+      const uniqueCodes = Array.from(new Set(codes));
+      for (let i = 0; i < uniqueCodes.length; i += batchSize) {
+        const batch = uniqueCodes.slice(i, i + batchSize);
+        const { data, error } = await supabase
+          .from('products')
+          .select('id, aplibint')
+          .in('apcpro', batch);
+
+        if (error) {
+          result.errors.push(`Errore recupero prodotti: ${error.message}`);
+          continue;
+        }
+        if (data) {
+          (data as unknown as Product[]).forEach(p => {
+            if (p.aplibint && p.id) idByAplibint.set(p.aplibint, p.id);
+          });
+        }
+      }
+
+      // Aggiorna ogni prodotto (chiave: CPROD + CIMB = aplibint)
+      for (const row of rows) {
+        const productId = idByAplibint.get(`${row.apcpro}${row.apcimb}`);
+        if (!productId) {
+          result.notFoundCodes.push({
+            apcpro: row.apcpro,
+            apcimb: row.apcimb,
+            descrizione: row.descrizione,
+            imballo: row.imballo,
+            qty: row.qty,
+            uvr: row.uvr,
+            listino: row.listino,
+            listinoPromo: row.promoPrezzo,
+            rowNumber: row.rowNumber
+          });
+          result.skippedRows++;
+          continue;
+        }
+
+        // apcpro e apcimb sono chiave: non vengono aggiornati.
+        // Aggiorna solo promoPrezzo, promoDAL, promoAL.
+        const update: Record<string, any> = {
+          promoDAL: promoDAL,
+          promoAL: promoAL,
+          updated_at: new Date().toISOString()
+        };
+        if (row.promoPrezzo !== undefined) update.promoPrezzo = row.promoPrezzo;
+
+        const { error } = await (supabase.from('products') as any)
+          .update(update)
+          .eq('id', productId);
+
+        if (error) {
+          result.errors.push(`Aggiornamento ${row.apcpro}: ${error.message}`);
+          result.skippedRows++;
+        } else {
+          result.updatedRows++;
+          result.updatedCodes.push(row.apcpro);
+        }
+      }
+
+      result.success = result.errors.length === 0 || result.updatedRows > 0;
+    } catch (error) {
+      result.errors.push(`Errore generale: ${error instanceof Error ? error.message : 'errore sconosciuto'}`);
+    }
+
+    return result;
+  }
+
+  /**
+   * Validazione date promozione (formato ISO o Date parsabile).
+   */
+  private static validatePromoDates(promoDAL: string, promoAL: string): string | null {
+    if (!promoDAL || !promoAL) {
+      return 'Le date promozione (DAL e AL) sono obbligatorie';
+    }
+    const start = new Date(promoDAL);
+    const end = new Date(promoAL);
+    if (isNaN(start.getTime()) || isNaN(end.getTime())) {
+      return 'Le date promozione non sono valide';
+    }
+    if (start >= end) {
+      return 'La data di inizio promo deve essere precedente alla data di fine';
+    }
+    return null;
+  }
+
   /**
    * Crea la mappatura tra le intestazioni Excel e i campi del database
    */
@@ -1635,6 +2078,15 @@ export class ListinoService {
       } else {
         // Di default, nascondi i prodotti obsoleti
         query = query.or('obsoleto.eq.false,obsoleto.is.null');
+      }
+
+      // Filtro solo prodotti in promo (hanno date promo e prezzo valorizzati)
+      if (filters?.promo_only === true) {
+        query = query
+          .not('promoDAL', 'is', null)
+          .not('promoAL', 'is', null)
+          .not('promoPrezzo', 'is', null)
+          .gt('promoPrezzo', 0);
       }
 
       // Ordinamento

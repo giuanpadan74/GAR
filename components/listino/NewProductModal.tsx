@@ -3,6 +3,11 @@ import { X, Save, AlertCircle } from 'lucide-react';
 import { Product, CreateProductInput } from '../../types/listino';
 import { ListinoService } from '../../services/listinoService';
 import { useAuth } from '../../contexts/AuthContextSimple';
+import {
+  formatDateToItalian,
+  formatDateToISO,
+  isValidItalianDate
+} from '../../src/utils/dateUtils';
 
 interface NewProductModalProps {
   isOpen: boolean;
@@ -133,6 +138,25 @@ export const NewProductModal: React.FC<NewProductModalProps> = ({
     if (!formData.apprli || isNaN(Number(formData.apprli)) || Number(formData.apprli) <= 0) {
       return 'Il prezzo listino deve essere un numero positivo';
     }
+    if (formData.promoDAL.trim() && !isValidItalianDate(formData.promoDAL)) {
+      return 'Formato data Promo Dal non valido. Usa dd/mm/yyyy';
+    }
+    if (formData.promoAL.trim() && !isValidItalianDate(formData.promoAL)) {
+      return 'Formato data Promo Al non valido. Usa dd/mm/yyyy';
+    }
+    if (formData.promoDAL.trim() && formData.promoAL.trim()) {
+      const isoDAL = formatDateToISO(formData.promoDAL);
+      const isoAL = formatDateToISO(formData.promoAL);
+      if (isoDAL && isoAL && new Date(isoDAL) > new Date(isoAL)) {
+        return 'La data Promo Al deve essere successiva alla data Promo Dal';
+      }
+    }
+    if ((formData.promoDAL.trim() || formData.promoAL.trim()) && !formData.promoPrezzo) {
+      return 'Se inserisci date promo, devi inserire anche il Prezzo Promo';
+    }
+    if (formData.promoPrezzo && (!formData.promoDAL.trim() || !formData.promoAL.trim())) {
+      return 'Se inserisci il Prezzo Promo, devi inserire sia Promo Dal che Promo Al';
+    }
     return null;
   };
 
@@ -149,6 +173,9 @@ export const NewProductModal: React.FC<NewProductModalProps> = ({
     setError(null);
 
     try {
+      const finalPromoDAL = formData.promoDAL.trim() ? formatDateToISO(formData.promoDAL) : '';
+      const finalPromoAL = formData.promoAL.trim() ? formatDateToISO(formData.promoAL) : '';
+
       // Prepara i dati per la creazione
       const productData: CreateProductInput = {
         aplibint: formData.aplibint.trim() || undefined,
@@ -164,8 +191,8 @@ export const NewProductModal: React.FC<NewProductModalProps> = ({
         apprli: Number(formData.apprli),
         aplib1: formData.aplib1.trim() || undefined,
         CONOU: formData.CONOU ? Number(formData.CONOU) : undefined,
-        promoDAL: formData.promoDAL || undefined,
-        promoAL: formData.promoAL || undefined,
+        promoDAL: finalPromoDAL || undefined,
+        promoAL: finalPromoAL || undefined,
         promoPrezzo: formData.promoPrezzo ? Number(formData.promoPrezzo) : undefined,
         is_active: formData.is_active,
         obsoleto: formData.obsoleto
@@ -444,24 +471,28 @@ export const NewProductModal: React.FC<NewProductModalProps> = ({
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-black mb-2">
-                    Promo Dal
+                    Promo Dal <span className="text-gray-500 text-xs">(dd/mm/yyyy)</span>
                   </label>
                   <input
-                    type="date"
+                    type="text"
                     value={formData.promoDAL}
                     onChange={(e) => handleInputChange('promoDAL', e.target.value)}
+                    placeholder="dd/mm/yyyy"
+                    maxLength={10}
                     className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-black"
                   />
                 </div>
 
                 <div>
                   <label className="block text-sm font-medium text-black mb-2">
-                    Promo Al
+                    Promo Al <span className="text-gray-500 text-xs">(dd/mm/yyyy)</span>
                   </label>
                   <input
-                    type="date"
+                    type="text"
                     value={formData.promoAL}
                     onChange={(e) => handleInputChange('promoAL', e.target.value)}
+                    placeholder="dd/mm/yyyy"
+                    maxLength={10}
                     className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-black"
                   />
                 </div>

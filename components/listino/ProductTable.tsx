@@ -675,7 +675,17 @@ export const ProductTable: React.FC<ProductTableProps> = ({
                   </div>
                 </th>
 
-                {/* 2. BRAND */}
+                {/* 2. APCPRO */}
+                <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  APCPRO
+                </th>
+
+                {/* 3. APCIMB */}
+                <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  APCIMB
+                </th>
+
+                {/* 4. BRAND */}
                 {!showMinimoColumns && !showManualColumns && (!showPromoColumns || showOldPriceColumns) && (
                   <th 
                     className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"

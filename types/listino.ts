@@ -74,7 +74,8 @@ export interface Product {
   // Campi esistenti mantenuti per compatibilità
   is_active: boolean;
   obsoleto?: boolean; // Campo per marcare prodotti obsoleti
-  prezzo_old?: number; // Vecchio prezzo
+  prezzo_old?: number; // Vecchio prezzo (deprecated - usare prezzo_aprile_2026)
+  prezzo_aprile_2026?: number; // Prezzo di aprile 2026 per confronto variazioni
   varprezz?: number; // Variazione prezzo in euro
   variaz?: number; // Variazione prezzo percentuale
   created_at: string;
@@ -158,6 +159,7 @@ export interface ProductFilters {
   xde60?: string;
   aplib1?: string;
   obsoleto?: boolean;
+  promo_only?: boolean;
   page?: number;
   page_size?: number;
 }
@@ -190,6 +192,72 @@ export interface ImportResult {
   totalRows: number;
   importedRows: number;
   updatedRows: number;
+  errors: string[];
+  warnings: string[];
+}
+
+// =====================================================
+// TIPI PER IMPORT PROMOZIONI
+// =====================================================
+
+// Riga parsed dal file Excel delle promozioni
+export interface ParsedPromoRow {
+  apcpro: string; // Codice prodotto (chiave di ricerca)
+  apcimb?: string; // Codice imballo
+  promoPrezzo?: number; // Prezzo promozionale
+  descrizione?: string; // Descrizione prodotto (opzionale dall'Excel)
+  imballo?: string; // Descrizione imballo (opzionale dall'Excel)
+  qty?: number; // Quantità (opzionale dall'Excel)
+  uvr?: string; // Unità di vendita (opzionale dall'Excel)
+  listino?: number; // Listino (opzionale dall'Excel)
+  rowNumber: number; // Numero riga originale nel file Excel
+}
+
+// Info su un prodotto trovato nel DB durante la preview
+export interface PromoProductInfo {
+  apcpro: string;
+  productId: string;
+  descrizione?: string;
+  hasExistingPromo: boolean; // true se ha già promoDAL/promoAL/promoPrezzo valorizzati
+  currentPromoDAL?: string;
+  currentPromoAL?: string;
+  currentPromoPrezzo?: number;
+  newPromoPrezzo?: number;
+  newApcimb?: string;
+}
+
+// Prodotto non trovato nel DB - contiene i dati dalla riga Excel
+export interface NotFoundPromoProduct {
+  apcpro: string;
+  apcimb?: string;
+  descrizione?: string;
+  imballo?: string;
+  qty?: number;
+  uvr?: string;
+  listino?: number;
+  listinoPromo?: number;
+  rowNumber: number;
+}
+
+// Risultato della preview (prima di applicare le modifiche)
+export interface ImportPromoPreview {
+  totalRows: number;
+  parsedRows: ParsedPromoRow[];
+  foundProducts: PromoProductInfo[];
+  notFoundCodes: NotFoundPromoProduct[]; // Prodotti non trovati nel DB
+  existingPromoCount: number; // Quanti prodotti hanno già campi promo valorizzati
+  duplicateCodes: string[]; // Codici CPROD duplicati nel file
+  errors: string[];
+}
+
+// Risultato dell'applicazione delle promo
+export interface ImportPromoResult {
+  success: boolean;
+  totalRows: number;
+  updatedRows: number;
+  skippedRows: number;
+  notFoundCodes: NotFoundPromoProduct[];
+  updatedCodes: string[];
   errors: string[];
   warnings: string[];
 }
