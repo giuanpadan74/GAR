@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { supabase } from '../lib/supabase';
+import { supabase } from '../../services/supabaseClient';
 
 const VersionBadge: React.FC = () => {
   const [version, setVersion] = useState<string>('');
@@ -16,8 +16,9 @@ const VersionBadge: React.FC = () => {
           .maybeSingle();
 
         if (error) throw error;
-        if (mounted) setVersion((data as any)?.version_number || '');
-      } catch {
+        if (mounted) setVersion(data?.version_number ?? '');
+      } catch (error) {
+        console.error('Errore nel caricamento della versione:', error);
         if (mounted) setVersion('');
       }
     })();

@@ -1,4 +1,5 @@
 import { supabase, withRetry } from '../lib/supabase';
+import type { Database } from '../../types/database';
 import { toast } from 'sonner';
 
 export interface ImportData {
@@ -16,18 +17,9 @@ export interface ImportResult {
   warnings: string[];
 }
 
-export interface ImportLog {
-  id?: string;
-  user_id: string;
-  filename: string;
-  total_records: number;
-  successful_records: number;
-  failed_records: number;
-  errors: string[];
-  warnings: string[];
-  import_date: string;
-  status: 'completed' | 'failed' | 'partial';
-}
+// Deriva dalla tabella `import_logs`: errors/warnings sono nullable e lo status
+// è un text libero lato DB, quindi qui non si stringa
+export type ImportLog = Database['public']['Tables']['import_logs']['Row'];
 
 /**
  * Servizio per l'importazione bulk delle corrispondenze

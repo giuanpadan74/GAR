@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { supabase } from '../lib/supabase';
+import { supabase } from '../../services/supabaseClient';
 import { useAuth } from '../../contexts/AuthContextSimple';
 import { toast } from 'sonner';
 import { History, X } from 'lucide-react';
@@ -11,9 +11,21 @@ interface VersionsModalProps {
 
 type VersionRow = {
   id: string;
-  version: string;
-  description?: string | null;
-  created_at?: string | null;
+  version_number: string;
+  description: string;
+  created_at: string | null;
+};
+
+// Formato della colonna version_number (es. "26.10.01", "1.2.3")
+const VERSION_REGEX = /^(v)?\d+\.\d+\.\d+$/;
+
+const formatDate = (s?: string | null) => {
+  if (!s) return '';
+  const d = new Date(s);
+  const dd = String(d.getDate()).padStart(2, '0');
+  const mm = String(d.getMonth() + 1).padStart(2, '0');
+  const yyyy = d.getFullYear();
+  return `${dd}/${mm}/${yyyy}`;
 };
 
 const VersionsModal: React.FC<VersionsModalProps> = ({ isOpen, onClose }) => {
@@ -21,38 +33,66 @@ const VersionsModal: React.FC<VersionsModalProps> = ({ isOpen, onClose }) => {
   const [loading, setLoading] = useState(false);
   const [rows, setRows] = useState<VersionRow[]>([]);
   const [newRow, setNewRow] = useState<{ version: string; description: string }>({ version: '', description: '' });
-  const formatDate = (s?: string) => {
-    if (!s) return '';
-    const d = new Date(s);
-    const dd = String(d.getDate()).padStart(2, '0');
-    const mm = String(d.getMonth() + 1).padStart(2, '0');
-    const yyyy = d.getFullYear();
-    return `${dd}/${mm}/${yyyy}`;
-  };
 
   const loadVersions = async () => {
     setLoading(true);
     try {
       const { data, error } = await supabase
         .from('version_history')
-        .select('id, version_number, description, notes, created_at')
+        .select('id, version_number, description, created_at')
         .order('created_at', { ascending: false });
       if (error) throw error;
-      const mapped = (data || []).map((r: any) => ({
-        id: r.id,
-        version: r.version_number,
-        description: r.description ?? r.notes ?? null,
-        created_at: r.created_at,
-      }));
-      setRows(mapped as VersionRow[]);
+      setRows(data);
     } catch (e) {
+      console.error('Errore nel caricamento delle versioni:', e);
       toast.error('Errore nel caricamento delle versioni');
     } finally {
       setLoading(false);
     }
   };
 
-  // Modal in SOLA LETTURA: nessun add/update/delete/imposta
+  const addVersion = async () => {
+    const version = newRow.version.trim();
+    const description = newRow.description.trim();
+
+    if (!version) return toast.warning('Inserisci la versione');
+    if (!description) return toast.warning('Inserisci la descrizione');
+    if (!VERSION_REGEX.test(version)) {
+      return toast.error('Formato versione non valido. Usa vX.Y.Z o X.Y.Z');
+    }
+
+    setLoading(true);
+    try {
+      // description e implementation_date sono NOT NULL: non si può mandare null
+      const { error } = await supabase.from('version_history').insert({
+        version_number: version,
+        description,
+        implementation_date: new Date().toISOString().slice(0, 10),
+        is_current: false
+      });
+
+      if (error) throw error;
+
+      toast.success('Versione aggiunta');
+      setNewRow({ version: '', description: '' });
+      await loadVersions();
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : 'Errore durante l\'inserimento';
+      console.error('Errore inserimento versione:', msg);
+      // 23505 = unique violation, 23502 = not-null, 23514 = check
+      if (/duplicate key|unique|already exists/i.test(msg)) {
+        toast.error('Versione già presente');
+      } else if (/not-null|null value/i.test(msg)) {
+        toast.error('Versione e descrizione sono obbligatorie');
+      } else if (/check constraint/i.test(msg)) {
+        toast.error('Formato versione non valido');
+      } else {
+        toast.error(msg);
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
     if (isOpen) loadVersions();
@@ -96,48 +136,7 @@ const VersionsModal: React.FC<VersionsModalProps> = ({ isOpen, onClose }) => {
             {isAdmin() && (
             <div className="flex justify-end">
               <button
-                onClick={async () => {
-                  const v = newRow.version.trim();
-                  if (!v) return toast.warning('Inserisci la versione');
-                  const regex = /^(v)?\d+\.\d+\.\d+$/;
-                  if (!regex.test(v)) return toast.error('Formato versione non valido. Usa vX.Y.Z o X.Y.Z');
-                  setLoading(true);
-                  try {
-                    const { data: exists } = await supabase
-                      .from('version_history')
-                      .select('id')
-                      .eq('version_number', v)
-                      .maybeSingle();
-                    if (exists) {
-                      toast.warning('Versione già presente');
-                      setLoading(false);
-                      return;
-                    }
-                    const { error } = await supabase
-                      .from('version_history')
-                      .insert({
-                        version_number: v,
-                        description: newRow.description.trim() || null,
-                        implementation_date: new Date().toISOString().slice(0, 10),
-                        is_current: false
-                      });
-                    if (error) throw error;
-                    toast.success('Versione aggiunta');
-                    setNewRow({ version: '', description: '' });
-                    await loadVersions();
-                  } catch (e: any) {
-                    const msg = String(e?.message || 'Errore durante l’inserimento');
-                    if (/unique|duplicate/i.test(msg)) {
-                      toast.error('Versione duplicata');
-                    } else if (/check constraint|format/i.test(msg)) {
-                      toast.error('Formato versione non valido');
-                    } else {
-                      toast.error(msg);
-                    }
-                  } finally {
-                    setLoading(false);
-                  }
-                }}
+                onClick={addVersion}
                 disabled={loading}
                 className="px-3 py-2 bg-roloil-purple hover:bg-roloil-purple/80 text-white rounded-lg disabled:opacity-50"
               >
@@ -158,14 +157,14 @@ const VersionsModal: React.FC<VersionsModalProps> = ({ isOpen, onClose }) => {
                 <tbody>
                   {rows.map((r) => (
                     <tr key={r.id} className="border-t border-roloil-light-gray">
-                      <td className="px-3 py-2"><span>{r.version}</span></td>
-                      <td className="px-3 py-2"><span className="text-gray-300">{r.description || ''}</span></td>
+                      <td className="px-3 py-2"><span>{r.version_number}</span></td>
+                      <td className="px-3 py-2"><span className="text-gray-300">{r.description}</span></td>
                       <td className="px-3 py-2"><span className="text-gray-300">{formatDate(r.created_at)}</span></td>
                     </tr>
                   ))}
                   {rows.length === 0 && (
                     <tr>
-                      <td className="px-3 py-4 text-center text-gray-300" colSpan={4}>Nessuna versione presente</td>
+                      <td className="px-3 py-4 text-center text-gray-300" colSpan={3}>Nessuna versione presente</td>
                     </tr>
                   )}
                 </tbody>

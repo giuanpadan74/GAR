@@ -1,4 +1,5 @@
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
+import type { Database } from '../../types/database';
 
 // Lettura variabili d'ambiente (senza fallback hardcoded)
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL as string | undefined;
@@ -10,13 +11,13 @@ if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
 }
 
 // Singleton migliorato: lazy init, istanza unica
-let client: SupabaseClient | null = null;
+let client: SupabaseClient<Database> | null = null;
 
-export function getSupabaseClient(): SupabaseClient {
+export function getSupabaseClient(): SupabaseClient<Database> {
   if (client) return client;
 
   // Configurazione snella orientata alle performance
-  client = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+  client = createClient<Database>(SUPABASE_URL, SUPABASE_ANON_KEY, {
     auth: {
       // Disabilita l'auto refresh per ridurre wakeups e chatter
       autoRefreshToken: false,
