@@ -11,18 +11,6 @@ export const editableProductSchema = z.object({
     .max(50, 'APLIBINT non può superare i 50 caratteri')
     .regex(/^[a-zA-Z0-9\s\-_]*$/, 'APLIBINT contiene caratteri non validi'),
   
-  apcpro: z
-    .string()
-    .max(50, 'APCPRO non può superare i 50 caratteri')
-    .regex(/^[a-zA-Z0-9\s\-_]*$/, 'APCPRO contiene caratteri non validi')
-    .optional(),
-  
-  apcimb: z
-    .string()
-    .max(50, 'APCIMB non può superare i 50 caratteri')
-    .regex(/^[a-zA-Z0-9\s\-_]*$/, 'APCIMB contiene caratteri non validi')
-    .optional(),
-  
   brand: z
     .string()
     .max(100, 'Brand non può superare i 100 caratteri')
@@ -97,7 +85,7 @@ export const editableProductSchema = z.object({
     .string()
     .regex(/^\d{2}\/\d{2}\/\d{4}$/, 'Formato data non valido (dd/mm/yyyy)')
     .refine((val) => {
-      if (!val) return true;
+      if (!val) return true; // Campo opzionale
       const [day, month, year] = val.split('/').map(Number);
       const date = new Date(year, month - 1, day);
       return date.getDate() === day && date.getMonth() === month - 1 && date.getFullYear() === year;
@@ -108,7 +96,7 @@ export const editableProductSchema = z.object({
     .string()
     .regex(/^\d{2}\/\d{2}\/\d{4}$/, 'Formato data non valido (dd/mm/yyyy)')
     .refine((val) => {
-      if (!val) return true;
+      if (!val) return true; // Campo opzionale
       const [day, month, year] = val.split('/').map(Number);
       const date = new Date(year, month - 1, day);
       return date.getDate() === day && date.getMonth() === month - 1 && date.getFullYear() === year;
@@ -137,8 +125,6 @@ export const editableProductSchema = z.object({
  */
 export const singleFieldSchema = {
   aplibint: editableProductSchema.shape.aplibint,
-  apcpro: editableProductSchema.shape.apcpro,
-  apcimb: editableProductSchema.shape.apcimb,
   brand: editableProductSchema.shape.brand,
   xde40: editableProductSchema.shape.xde40,
   xde60: editableProductSchema.shape.xde60,

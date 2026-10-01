@@ -12,6 +12,7 @@ import {
   type LoginCredentials,
   type AuthServiceResponse
 } from '../services/authServiceSimple';
+import { userAccessLogService } from '../services/userAccessLogService';
 
 export interface AuthContextType {
   user: ProfileData | null;
@@ -22,6 +23,7 @@ export interface AuthContextType {
   signUp: (userData: SignUpData) => Promise<AuthServiceResponse<ProfileData>>;
   signOut: () => Promise<AuthServiceResponse<null>>;
   createUserByAdmin: (userData: AdminCreateUserData) => Promise<AuthServiceResponse<ProfileData>>;
+  resetPassword: (params: { email: string }) => Promise<AuthServiceResponse<null>>;
   refreshUser: () => Promise<void>;
   
   isAdmin: () => boolean;
@@ -57,6 +59,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
       const result = await authServiceSimple.signIn(credentials);
       if (result.success && result.data) {
         setUser(result.data);
+        void userAccessLogService.trackSuccessfulAccess(result.data.id);
       }
       return result;
     } finally {
@@ -98,6 +101,10 @@ export function AuthProvider({ children }: AuthProviderProps) {
     }
   };
 
+  const resetPassword = async (params: { email: string }): Promise<AuthServiceResponse<null>> => {
+    return authServiceSimple.resetPassword(params);
+  };
+
   const refreshUser = async (): Promise<void> => {
     const result = await authServiceSimple.refreshUser();
     if (result.success && result.data) {
@@ -121,6 +128,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
     signUp,
     signOut,
     createUserByAdmin,
+    resetPassword,
     refreshUser,
     isAdmin,
     isAgent,

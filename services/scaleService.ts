@@ -1,14 +1,8 @@
 import { supabase } from './supabaseClient';
+import type { Database } from '../types/database';
 
-export interface Scale {
-  id?: string;
-  Scala: 'A' | 'B' | 'C' | 'D' | 'E' | 'P';
-  Sconto: number;
-  Provv: number;
-  minprov: boolean;
-  created_at?: string;
-  updated_at?: string;
-}
+// Riflette esattamente le colonne della tabella `scales`
+export type Scale = Database['public']['Tables']['scales']['Row'];
 
 export interface ScaleFilters {
   scala?: string;

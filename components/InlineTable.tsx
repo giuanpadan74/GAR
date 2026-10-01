@@ -56,8 +56,11 @@ const InlineTable: React.FC<InlineTableProps> = ({ data, isAdmin, onDataUpdate, 
     return source;
   }, [data, allTypes]);
 
+  // Solo i campi editabili dalla tabella: id e timestamp non sono aggiornabili
+  type EditableField = 'brand' | 'product' | 'sae' | 'q8' | 'type';
+
   const columns: Array<{
-    key: keyof CorrispondenzaOlioRaw;
+    key: EditableField;
     label: string;
     width?: string;
   }> = [
@@ -205,9 +208,10 @@ const InlineTable: React.FC<InlineTableProps> = ({ data, isAdmin, onDataUpdate, 
     }
   }, [typeFilter, onTypeSelected]);
 
+  // Solo i campi editabili dalla tabella: id e timestamp non sono aggiornabili
   const handleCellUpdate = async (
     id: string,
-    field: keyof CorrispondenzaOlioRaw,
+    field: EditableField,
     newValue: string
   ) => {
     try {

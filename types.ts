@@ -22,7 +22,8 @@ export interface Province {
 
 export type GeoJSONGeometry = {
   type: string;
-  coordinates: any;
+  // Il DB restituisce `geometry` come Json: validato a runtime, non tipizzato più fine
+  coordinates: unknown;
 };
 
 export interface Municipality {

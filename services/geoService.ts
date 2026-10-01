@@ -1,6 +1,17 @@
 
 import { Region, Province, Municipality } from '../types';
 import { supabase } from './supabaseClient';
+import type { Database, Json } from '../types/database';
+
+type ComuneRow = Database['public']['Tables']['comuni']['Row'];
+
+// La colonna `geometry` è un Json generico: qui si stringa al tipo GeoJSON atteso dal frontend
+const toMunicipality = (row: ComuneRow): Municipality => ({
+  codice_comune: row.codice_comune,
+  nome_comune: row.nome_comune,
+  codice_provincia: row.codice_provincia,
+  geometry: row.geometry as unknown as Municipality['geometry']
+});
 
 // --- REGIONS ---
 const getRegions = async (): Promise<Region[]> => {
@@ -75,7 +86,7 @@ const getMunicipalitiesByProvince = async (provinceCode: number): Promise<Munici
         console.error('Errore nel caricamento dei comuni:', error.message);
         return [];
     }
-    return data || [];
+    return (data ?? []).map(toMunicipality);
 };
 
 const getMunicipalitiesByCodes = async (codes: number[]): Promise<Municipality[]> => {
@@ -88,7 +99,7 @@ const getMunicipalitiesByCodes = async (codes: number[]): Promise<Municipality[]
         console.error('Errore nel caricamento dei nomi dei comuni:', error.message);
         return [];
     }
-    return data || [];
+    return (data ?? []).map(toMunicipality);
 };
 
 const getAllAssignedMunicipalities = async (agentAssignments: { agentId: number, municipalityCodes: number[] }[]): Promise<Municipality[]> => {
@@ -105,17 +116,25 @@ const getAllAssignedMunicipalities = async (agentAssignments: { agentId: number,
         console.error('Errore nel caricamento dei comuni assegnati:', error.message);
         return [];
     }
-    return data || [];
+    return (data ?? []).map(toMunicipality);
 };
 
 const addMunicipality = async (municipality: Municipality) => {
-    const { error } = await supabase.from('comuni').insert([municipality]);
+    const { error } = await supabase.from('comuni').insert([{
+        codice_comune: municipality.codice_comune,
+        nome_comune: municipality.nome_comune,
+        codice_provincia: municipality.codice_provincia,
+        geometry: municipality.geometry as unknown as Json
+    }]);
     if (error) console.error("Errore nell'aggiunta del comune:", error.message);
     return !error;
 }
 
 const updateMunicipality = async (codice_comune: number, updates: Partial<Municipality>) => {
-    const { error } = await supabase.from('comuni').update(updates).eq('codice_comune', codice_comune);
+    const { error } = await supabase
+        .from('comuni')
+        .update({ ...updates, geometry: updates.geometry as unknown as Json | undefined })
+        .eq('codice_comune', codice_comune);
     if (error) console.error("Errore nell'aggiornamento del comune:", error.message);
     return !error;
 }
@@ -137,7 +156,7 @@ const getAllMunicipalities = async (): Promise<Municipality[]> => {
         console.error('Errore nel caricamento di tutti i comuni:', error.message);
         return [];
     }
-    return data || [];
+    return (data ?? []).map(toMunicipality);
 };
 
 const getMunicipalitiesByRegion = async (regionCode: number): Promise<Municipality[]> => {
@@ -173,7 +192,7 @@ const getMunicipalitiesByRegion = async (regionCode: number): Promise<Municipali
         return [];
     }
     
-    return municipalitiesData || [];
+    return (municipalitiesData ?? []).map(toMunicipality);
 };
 
 

@@ -10,6 +10,8 @@ export interface UpdateCorrispondenzaData {
   sae: string;
   q8?: string | null;
   type: string;
+  // Timestamp gestito dal trigger/frontend, non editabile dall'utente
+  updated_at?: string | null;
 }
 
 export async function updateCorrispondenza(
@@ -43,9 +45,12 @@ export async function updateCorrispondenza(
   }
 }
 
+// Solo i campi modificabili dalla tabella: id e updated_at sono gestiti dal servizio
+type EditableCorrispondenzaField = 'brand' | 'product' | 'sae' | 'q8' | 'type';
+
 export async function updateCorrispondenzaField(
   id: string,
-  field: keyof UpdateCorrispondenzaData,
+  field: EditableCorrispondenzaField,
   value: string
 ): Promise<{ success: boolean; error?: string }> {
   try {

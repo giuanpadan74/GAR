@@ -1,5 +1,4 @@
 import React, { useState, Suspense } from 'react';
-import { useAuth } from '../contexts/AuthContextSimple';
 import { 
   FileText, 
   BarChart3,
@@ -13,7 +12,6 @@ const StatisticheTab = React.lazy(() => import('./statistiche/StatisticheTab'));
 type TabType = 'preventivi' | 'statistiche';
 
 const GestioneView: React.FC = () => {
-  const { profile } = useAuth();
   
   // Stato per il tab attivo
   const [activeTab, setActiveTab] = useState<TabType>('preventivi');

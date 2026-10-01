@@ -1,12 +1,15 @@
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Municipality } from '../types';
-import { TrashIcon, LinkIcon, ClipboardCopyIcon, SpinnerIcon, XIcon, PencilIcon } from './Icons';
+import { TrashIcon, LinkIcon, ClipboardCopyIcon, PencilIcon } from './Icons';
 import geoService from '../services/geoService';
 import UserMunicipalityService from '../services/userMunicipalityService';
 import type { ProfileData } from '../services/authServiceSimple';
+import AssignedMunicipalitiesRow from './users/AssignedMunicipalitiesRow';
+import { getRoleDisplayName } from './users/userRole';
 
 interface AgentRowProps {
   user: ProfileData;
+  onAccessClick: (user: ProfileData) => void;
   onAssignClick: (user: ProfileData) => void;
   onDeleteClick: (user: ProfileData) => void;
   onEditClick: (user: ProfileData) => void;
@@ -17,11 +20,12 @@ interface AgentRowProps {
 }
 
 const AgentRow: React.FC<AgentRowProps> = ({ 
-  user, 
-  onAssignClick, 
+  user,
+  onAccessClick,
+  onAssignClick,
   onDeleteClick,
   onEditClick,
-  assignedCount, 
+  assignedCount,
   onUnassignMunicipality,
   currentUserId,
   isAdmin = false
@@ -32,21 +36,6 @@ const AgentRow: React.FC<AgentRowProps> = ({
 
   const handleCopy = (text: string) => {
     navigator.clipboard.writeText(text);
-    // You might want to add a toast notification here
-  };
-
-  // Funzione per ottenere il nome del ruolo in italiano
-  const getRoleDisplayName = (role: string) => {
-    switch (role) {
-      case 'admin':
-        return 'Amministratore';
-      case 'agente':
-        return 'Agente';
-      case 'operatore':
-        return 'Operatore';
-      default:
-        return role;
-    }
   };
 
   useEffect(() => {
@@ -97,6 +86,7 @@ const AgentRow: React.FC<AgentRowProps> = ({
 
   const isCurrentUser = currentUserId === user.id;
   const canManage = isAdmin || isCurrentUser;
+  const totalColumns = isAdmin ? 6 : 5;
 
   return (
     <>
@@ -119,6 +109,16 @@ const AgentRow: React.FC<AgentRowProps> = ({
             {getRoleDisplayName(user.role)}
           </span>
         </td>
+        {isAdmin && (
+          <td className="p-4">
+            <button
+              onClick={() => onAccessClick(user)}
+              className="rounded-md bg-slate-700 px-3 py-1.5 text-sm font-semibold text-white transition-colors hover:bg-slate-600"
+            >
+              Accessi
+            </button>
+          </td>
+        )}
         <td className="p-4 text-gray-300">
           <div className="flex items-center">
             {user.phone_number || 'N/A'}
@@ -177,34 +177,12 @@ const AgentRow: React.FC<AgentRowProps> = ({
         </td>
       </tr>
       {showDetails && (
-        <tr className="bg-roloil-dark">
-            <td colSpan={5} className="p-4 transition-all duration-300 ease-in-out">
-                <h4 className="font-semibold text-gray-300 mb-2">Comuni Assegnati:</h4>
-                {isLoading ? (
-                    <div className="flex items-center text-gray-400">
-                        <SpinnerIcon className="w-5 h-5 animate-spin mr-2" />
-                        Caricamento...
-                    </div>
-                ) : municipalities.length > 0 ? (
-                    <div className="flex flex-wrap gap-2">
-                        {municipalities.map(muni => (
-                            <span key={muni.codice_comune} className="bg-roloil-light-gray text-gray-200 text-xs font-medium pl-2.5 pr-1 py-1 rounded-full inline-flex items-center">
-                                {muni.nome_comune}
-                                <button
-                                    onClick={() => handleUnassignClick(muni.codice_comune)}
-                                    className="ml-1.5 text-gray-400 hover:text-white hover:bg-red-500/50 rounded-full transition-colors"
-                                    aria-label={`Rimuovi ${muni.nome_comune}`}
-                                >
-                                    <XIcon className="w-3 h-3" />
-                                </button>
-                            </span>
-                        ))}
-                    </div>
-                ) : (
-                    <p className="text-gray-500 text-sm">Nessun comune assegnato.</p>
-                )}
-            </td>
-        </tr>
+        <AssignedMunicipalitiesRow
+          colSpan={totalColumns}
+          isLoading={isLoading}
+          municipalities={municipalities}
+          onUnassignMunicipality={handleUnassignClick}
+        />
       )}
     </>
   );

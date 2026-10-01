@@ -448,7 +448,7 @@ export function useListino(): UseListinoState & UseListinoActions {
     return state.products.filter(product => {
       const filters = state.productFilters;
       
-      if (filters.category && product.category !== filters.category) return false;
+      // La tabella `products` non ha una colonna categoria: nessun filtro per categoria
       if (filters.search && !product.descrizione.toLowerCase().includes(filters.search.toLowerCase()) && 
           !product.apcpro.toLowerCase().includes(filters.search.toLowerCase())) return false;
       if (filters.price_min !== undefined && product.apprli < filters.price_min) return false;

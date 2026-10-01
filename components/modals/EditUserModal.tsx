@@ -11,7 +11,8 @@ interface UserProfile {
   phone_number?: string;
   role: 'admin' | 'agente' | 'operatore';
   color?: string;
-  created_at: string;
+  // `created_at` è opzionale in ProfileData (RPC e select possono non popolarlo)
+  created_at?: string;
 }
 
 interface EditUserModalProps {

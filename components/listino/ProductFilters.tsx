@@ -466,7 +466,7 @@ export const ProductFilters: React.FC<ProductFiltersProps> = ({
               }`}
             >
               {showOldPriceColumns ? <EyeOff className="w-4 h-4 mr-1 inline-block" /> : <Eye className="w-4 h-4 mr-1 inline-block" />}
-              <span>{showOldPriceColumns ? 'Nascondi' : 'Vecchio Prezzo'}</span>
+              <span>{showOldPriceColumns ? 'Nascondi' : 'Prezzi Vecchi'}</span>
             </button>
           )}
         </div>

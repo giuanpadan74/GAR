@@ -39,7 +39,7 @@ interface FormErrors {
 // =====================================================
 
 export default function AddUserModal({ isOpen, onClose, onUserAdded }: AddUserModalProps) {
-  const { createUserByAdmin, profile, isAdmin } = useAuth();
+  const { createUserByAdmin, isAdmin } = useAuth();
   
   // ===================================================
   // STATO
@@ -271,7 +271,7 @@ export default function AddUserModal({ isOpen, onClose, onUserAdded }: AddUserMo
             disabled={isSubmitting}
             className="text-gray-400 hover:text-white disabled:opacity-50"
           >
-            <XIcon size={24} />
+            <XIcon className="w-6 h-6" />
           </button>
         </div>
 

@@ -10,13 +10,101 @@ import {
   parseFieldValue, 
   type EditableProductInput 
 } from '../../src/utils/productValidation';
-import {
-  formatDateToItalian,
-  formatDateToISO,
-  isValidItalianDate,
-  getFirstDayOfCurrentMonth,
-  getLastDayOfCurrentMonth
-} from '../../src/utils/dateUtils';
+
+// Funzioni di utilità per la conversione delle date
+const formatDateToItalian = (isoDate: string): string => {
+  if (!isoDate) return '';
+  try {
+    // Se la data è in formato ISO (YYYY-MM-DD), parsala direttamente per evitare problemi di fuso orario
+    const isoRegex = /^(\d{4})-(\d{2})-(\d{2})$/;
+    const match = isoDate.match(isoRegex);
+    
+    if (match) {
+      const [, year, month, day] = match;
+      return `${day}/${month}/${year}`;
+    }
+    
+    // Fallback per altri formati di data
+    const date = new Date(isoDate + 'T00:00:00.000Z'); // Forza UTC per evitare problemi di fuso orario
+    if (isNaN(date.getTime())) return '';
+    
+    const day = date.getUTCDate().toString().padStart(2, '0');
+    const month = (date.getUTCMonth() + 1).toString().padStart(2, '0');
+    const year = date.getUTCFullYear();
+    
+    return `${day}/${month}/${year}`;
+  } catch (error) {
+    return '';
+  }
+};
+
+const formatDateToISO = (italianDate: string): string => {
+  if (!italianDate) return '';
+  try {
+    // Verifica formato dd/mm/yyyy
+    const dateRegex = /^(\d{2})\/(\d{2})\/(\d{4})$/;
+    const match = italianDate.match(dateRegex);
+    
+    if (!match) return '';
+    
+    const [, day, month, year] = match;
+    
+    // Verifica che la data sia valida creando una data UTC per evitare problemi di fuso orario
+    const dayNum = parseInt(day);
+    const monthNum = parseInt(month);
+    const yearNum = parseInt(year);
+    
+    // Verifica validità dei valori
+    if (dayNum < 1 || dayNum > 31 || monthNum < 1 || monthNum > 12 || yearNum < 1900) {
+      return '';
+    }
+    
+    // Crea la data UTC per evitare problemi di fuso orario
+    const date = new Date(Date.UTC(yearNum, monthNum - 1, dayNum));
+    
+    // Verifica che la data sia valida (controlla che non ci siano stati overflow)
+    if (isNaN(date.getTime()) || 
+        date.getUTCDate() !== dayNum ||
+        date.getUTCMonth() !== monthNum - 1 ||
+        date.getUTCFullYear() !== yearNum) {
+      return '';
+    }
+    
+    // Restituisce la data in formato ISO (YYYY-MM-DD) senza informazioni di orario
+    return `${yearNum}-${month}-${day}`;
+  } catch (error) {
+    return '';
+  }
+};
+
+const isValidItalianDate = (dateString: string): boolean => {
+  if (!dateString) return true; // Empty is valid
+  const dateRegex = /^(\d{2})\/(\d{2})\/(\d{4})$/;
+  return dateRegex.test(dateString) && formatDateToISO(dateString) !== '';
+};
+
+// Funzioni per i valori di default delle date promo
+const getFirstDayOfCurrentMonth = (): string => {
+  const now = new Date();
+  const firstDay = new Date(now.getFullYear(), now.getMonth(), 1);
+  
+  const day = firstDay.getDate().toString().padStart(2, '0');
+  const month = (firstDay.getMonth() + 1).toString().padStart(2, '0');
+  const year = firstDay.getFullYear();
+  
+  return `${day}/${month}/${year}`;
+};
+
+const getLastDayOfCurrentMonth = (): string => {
+  const now = new Date();
+  const lastDay = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+  
+  const day = lastDay.getDate().toString().padStart(2, '0');
+  const month = (lastDay.getMonth() + 1).toString().padStart(2, '0');
+  const year = lastDay.getFullYear();
+  
+  return `${day}/${month}/${year}`;
+};
 
 interface EditableProductRowProps {
   product: Product;
@@ -34,8 +122,6 @@ interface EditableProductRowProps {
 
 interface EditableFields {
   aplibint: string;
-  apcpro: string;
-  apcimb: string;
   brand: string;
   xde40: string;
   xde60: string;
@@ -51,8 +137,8 @@ interface EditableFields {
   promoDAL: string;
   promoAL: string;
   promoPrezzo: string;
-  prezzo_old: string;
   prezzo_aprile_2026: string;
+  prezzo_marzo_2026: string;
   varprezz: string;
   variaz: string;
   obsoleto: boolean;
@@ -79,11 +165,8 @@ export const EditableProductRow: React.FC<EditableProductRowProps> = ({
   const [availableCommissions, setAvailableCommissions] = useState<any[]>([]);
   const [isUpdatingFields, setIsUpdatingFields] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
-  const [showDeletePromoModal, setShowDeletePromoModal] = useState(false);
   const [editedFields, setEditedFields] = useState<EditableFields>({
     aplibint: product.aplibint || '',
-    apcpro: product.apcpro || '',
-    apcimb: product.apcimb || '',
     brand: product.brand || '',
     xde40: product.xde40 || '',
     xde60: product.xde60 || '',
@@ -99,8 +182,8 @@ export const EditableProductRow: React.FC<EditableProductRowProps> = ({
     promoDAL: formatDateToItalian(product.promoDAL || ''),
     promoAL: formatDateToItalian(product.promoAL || ''),
     promoPrezzo: product.promoPrezzo?.toString() || '',
-    prezzo_old: product.prezzo_old?.toString() || '',
     prezzo_aprile_2026: product.prezzo_aprile_2026?.toString() || '',
+    prezzo_marzo_2026: product.prezzo_marzo_2026?.toString() || '',
     varprezz: product.varprezz?.toString() || '',
     variaz: product.variaz?.toString() || '',
     obsoleto: product.obsoleto || false
@@ -113,8 +196,6 @@ export const EditableProductRow: React.FC<EditableProductRowProps> = ({
     // Se c'è un campo in editing, non resettare i suoi valori per evitare interruzioni durante la digitazione
     setEditedFields(prev => ({
       aplibint: editingField === 'aplibint' ? prev.aplibint : (product.aplibint || ''),
-      apcpro: editingField === 'apcpro' ? prev.apcpro : (product.apcpro || ''),
-      apcimb: editingField === 'apcimb' ? prev.apcimb : (product.apcimb || ''),
       brand: editingField === 'brand' ? prev.brand : (product.brand || ''),
       xde40: editingField === 'xde40' ? prev.xde40 : (product.xde40 || ''),
       xde60: editingField === 'xde60' ? prev.xde60 : (product.xde60 || ''),
@@ -130,7 +211,8 @@ export const EditableProductRow: React.FC<EditableProductRowProps> = ({
       promoDAL: editingField === 'promoDAL' ? prev.promoDAL : formatDateToItalian(product.promoDAL || ''),
       promoAL: editingField === 'promoAL' ? prev.promoAL : formatDateToItalian(product.promoAL || ''),
       promoPrezzo: editingField === 'promoPrezzo' ? prev.promoPrezzo : (product.promoPrezzo?.toString() || ''),
-      prezzo_old: editingField === 'prezzo_old' ? prev.prezzo_old : (product.prezzo_old?.toString() || ''),
+      prezzo_aprile_2026: editingField === 'prezzo_aprile_2026' ? prev.prezzo_aprile_2026 : (product.prezzo_aprile_2026?.toString() || ''),
+      prezzo_marzo_2026: editingField === 'prezzo_marzo_2026' ? prev.prezzo_marzo_2026 : (product.prezzo_marzo_2026?.toString() || ''),
       varprezz: editingField === 'varprezz' ? prev.varprezz : (product.varprezz?.toString() || ''),
       variaz: editingField === 'variaz' ? prev.variaz : (product.variaz?.toString() || ''),
       obsoleto: editingField === 'obsoleto' ? prev.obsoleto : (product.obsoleto || false)
@@ -367,38 +449,23 @@ export const EditableProductRow: React.FC<EditableProductRowProps> = ({
   // Auto-save function per salvare le modifiche quando l'utente esce da un campo
   const handleAutoSave = async (fieldName: string, value: any) => {
     // Chiunque può salvare ora, rimosso il controllo isAdmin() e adminCredentials
-
-    // Per i campi data promo, confronta nel formato ISO (DB) invece di dd/mm/yyyy (UI)
-    if (fieldName === 'promoDAL' || fieldName === 'promoAL') {
-      const isoValue = value && String(value).trim() ? formatDateToISO(String(value)) : '';
-      const currentValue = product[fieldName as keyof Product];
-      if (isoValue === currentValue || (isoValue === '' && !currentValue)) {
-        return; // Nessuna modifica, non salvare
-      }
-    } else {
-      // Controlla se il valore è effettivamente cambiato
-      const currentValue = product[fieldName as keyof Product];
-      if (value === currentValue || (value === '' && !currentValue)) {
-        return; // Nessuna modifica, non salvare
-      }
+    
+    // Controlla se il valore è effettivamente cambiato
+    const currentValue = product[fieldName as keyof Product];
+    if (value === currentValue || (value === '' && !currentValue)) {
+      return; // Nessuna modifica, non salvare
     }
-
+    
     setIsSaving(true);
-
+    
     try {
       const updates: any = {};
-      // Per i campi data promo, converti da dd/mm/yyyy (UI) a ISO (DB) prima dell'invio
-      if (fieldName === 'promoDAL' || fieldName === 'promoAL') {
-        const isoValue = value && String(value).trim() ? formatDateToISO(String(value)) : null;
-        updates[fieldName] = isoValue;
-      } else {
-        updates[fieldName] = value;
-      }
+      updates[fieldName] = value;
 
       // Se stiamo aggiornando il listino o il vecchio prezzo, ricalcola la variazione
-      if (fieldName === 'apprli' || fieldName === 'prezzo_old') {
+      if (fieldName === 'apprli' || fieldName === 'prezzo_aprile_2026') {
         const listPrice = fieldName === 'apprli' ? parseFloat(value.toString()) : parseFloat(editedFields.apprli);
-        const oldPrice = fieldName === 'prezzo_old' ? parseFloat(value.toString()) : parseFloat(editedFields.prezzo_old);
+        const oldPrice = fieldName === 'prezzo_aprile_2026' ? parseFloat(value.toString()) : parseFloat(editedFields.prezzo_aprile_2026);
         
         if (!isNaN(listPrice) && !isNaN(oldPrice)) {
           // Ricalcola varprezz (+/- in euro)
@@ -595,14 +662,6 @@ export const EditableProductRow: React.FC<EditableProductRowProps> = ({
           updates.aplibint = editedFields.aplibint;
         }
         
-        if (editedFields.apcpro !== (product.apcpro || '')) {
-          updates.apcpro = editedFields.apcpro;
-        }
-        
-        if (editedFields.apcimb !== (product.apcimb || '')) {
-          updates.apcimb = editedFields.apcimb;
-        }
-        
         if (editedFields.brand !== (product.brand || '')) {
           updates.brand = editedFields.brand;
         }
@@ -652,11 +711,18 @@ export const EditableProductRow: React.FC<EditableProductRowProps> = ({
           updates.aplib1 = editedFields.aplib1;
         }
 
-        // PREZZO VECCHIO E VARIAZIONE
-        if (editedFields.prezzo_old !== (product.prezzo_old?.toString() || '')) {
-          const numericValue = parseFloat(editedFields.prezzo_old);
+        // PREZZI VECCHI E VARIAZIONE
+        if (editedFields.prezzo_aprile_2026 !== (product.prezzo_aprile_2026?.toString() || '')) {
+          const numericValue = parseFloat(editedFields.prezzo_aprile_2026);
           if (!isNaN(numericValue)) {
-            updates.prezzo_old = numericValue;
+            updates.prezzo_aprile_2026 = numericValue;
+          }
+        }
+
+        if (editedFields.prezzo_marzo_2026 !== (product.prezzo_marzo_2026?.toString() || '')) {
+          const numericValue = parseFloat(editedFields.prezzo_marzo_2026);
+          if (!isNaN(numericValue)) {
+            updates.prezzo_marzo_2026 = numericValue;
           }
         }
 
@@ -749,10 +815,10 @@ export const EditableProductRow: React.FC<EditableProductRowProps> = ({
     setEditedFields(prev => {
       const newState = { ...prev, [field]: value };
       
-      // Se cambia apprli o prezzo_old, ricalcola varprezz e variaz
-      if (field === 'apprli' || field === 'prezzo_old') {
+      // Se cambia apprli o prezzo_aprile_2026, ricalcola varprezz e variaz
+      if (field === 'apprli' || field === 'prezzo_aprile_2026') {
         const listPrice = parseFloat(field === 'apprli' ? value as string : prev.apprli);
-        const oldPrice = parseFloat(field === 'prezzo_old' ? value as string : prev.prezzo_old);
+        const oldPrice = parseFloat(field === 'prezzo_aprile_2026' ? value as string : prev.prezzo_aprile_2026);
         
         if (!isNaN(listPrice) && !isNaN(oldPrice)) {
           newState.varprezz = (listPrice - oldPrice).toFixed(2);
@@ -801,29 +867,6 @@ export const EditableProductRow: React.FC<EditableProductRowProps> = ({
 
   const handleDeleteCancel = () => {
     setShowDeleteModal(false);
-  };
-
-  // Elimina solo i campi promo (promoDAL, promoAL, promoPrezzo) del prodotto
-  const handleDeletePromoConfirm = async () => {
-    try {
-      const { useAuth } = await import('../../contexts/AuthContextSimple');
-      const updated = await ListinoService.updateProductByAdmin(
-        product.id,
-        { promoDAL: null, promoAL: null, promoPrezzo: null } as any,
-        (useAuth as any).getCurrentUser?.()?.id || 'admin'
-      );
-      toast.success('Promo eliminata dal prodotto');
-      onProductUpdate(updated);
-    } catch (error) {
-      console.error("Errore durante l'eliminazione della promo:", error);
-      toast.error(error instanceof Error ? error.message : "Errore durante l'eliminazione della promo");
-    } finally {
-      setShowDeletePromoModal(false);
-    }
-  };
-
-  const handleDeletePromoCancel = () => {
-    setShowDeletePromoModal(false);
   };
 
   // Funzione per calcolare il MINIMO AGENTE promozionale
@@ -916,8 +959,11 @@ export const EditableProductRow: React.FC<EditableProductRowProps> = ({
       } else if (field === 'promoPrezzo') {
         const val = editedFields.promoPrezzo;
         displayValue = val ? `€${parseFloat(val).toFixed(2)}` : '-';
-      } else if (field === 'prezzo_old') {
-        const val = editedFields.prezzo_old;
+      } else if (field === 'prezzo_aprile_2026') {
+        const val = editedFields.prezzo_aprile_2026;
+        displayValue = val ? `€${parseFloat(val).toFixed(2)}` : '-';
+      } else if (field === 'prezzo_marzo_2026') {
+        const val = editedFields.prezzo_marzo_2026;
         displayValue = val ? `€${parseFloat(val).toFixed(2)}` : '-';
       } else if (field === 'varprezz') {
         const val = editedFields.varprezz;
@@ -1081,16 +1127,6 @@ export const EditableProductRow: React.FC<EditableProductRowProps> = ({
         {renderEditableCell({ field: "aplibint" })}
       </td>
 
-      {/* APCPRO */}
-      <td className="px-3 py-3 text-sm text-gray-900 text-right">
-        {renderEditableCell({ field: "apcpro" })}
-      </td>
-
-      {/* APCIMB */}
-      <td className="px-3 py-3 text-sm text-gray-900 text-right">
-        {renderEditableCell({ field: "apcimb" })}
-      </td>
-
       {/* BRAND */}
       {!showMinimoColumns && !showManualColumns && (!showPromoColumns || showOldPriceColumns) && (
         <td className="px-3 py-3 text-sm text-gray-900 text-left">
@@ -1144,17 +1180,14 @@ export const EditableProductRow: React.FC<EditableProductRowProps> = ({
         )}
       </td>
 
-      {/* PREZZO VECCHIO */}
+      {/* PREZZI VECCHI */}
       {showOldPriceColumns && (
         <>
           <td className="px-3 py-3 text-sm text-blue-900 bg-blue-50 text-right">
-            {renderEditableCell({ field: "prezzo_old", type: "number", className: "text-blue-900" })}
+            {renderEditableCell({ field: "prezzo_aprile_2026", type: "number", className: "text-blue-900" })}
           </td>
-          <td className="px-3 py-3 text-sm bg-blue-50 text-right">
-            {renderEditableCell({ field: "varprezz", type: "number" })}
-          </td>
-          <td className="px-3 py-3 text-sm bg-blue-50 text-right">
-            {renderEditableCell({ field: "variaz", type: "number" })}
+          <td className="px-3 py-3 text-sm text-blue-900 bg-blue-50 text-right">
+            {renderEditableCell({ field: "prezzo_marzo_2026", type: "number", className: "text-blue-900" })}
           </td>
         </>
       )}

@@ -4,13 +4,13 @@
  */
 
 import { supabase } from './supabaseClient';
-import type { 
-  Product, 
-  Preventivo, 
-  PreventiveStatus, 
+import { PreventiveStatus } from '../types/listino';
+import type {
+  Preventivo,
+  Product,
   ProductCategory,
   PreventivoStats,
-  ListinoStats 
+  ListinoStats
 } from '../types/listino';
 
 // Interfacce per le statistiche
@@ -106,10 +106,10 @@ export class StatisticheService {
 
       // Calcola totale vendite e fatturato
       const totaleVendite = preventivi?.length || 0;
-      const fatturatoTotale = preventivi?.reduce((sum, p) => sum + p.total, 0) || 0;
+      const fatturatoTotale = preventivi?.reduce((sum, p) => sum + p.total_amount, 0) || 0;
 
       // Calcola vendite per mese
-      const venditePerMese = this.calcolaVenditePerMese(preventivi || []);
+      const venditePerMese = this.calcolaVenditePerMese((preventivi ?? []) as unknown as Preventivo[]);
 
       // Calcola variazione percentuale (confronto con periodo precedente)
       const variazione = await this.calcolaVariazioneVendite(filtri);
@@ -202,7 +202,7 @@ export class StatisticheService {
       }, {} as Record<PreventiveStatus, number>) || {} as Record<PreventiveStatus, number>;
 
       // Calcola valore totale e medio
-      const valoreTotale = preventivi?.reduce((sum, p) => sum + p.total, 0) || 0;
+      const valoreTotale = preventivi?.reduce((sum, p) => sum + p.total_amount, 0) || 0;
       const valoreMedio = totalePreventivi > 0 ? valoreTotale / totalePreventivi : 0;
 
       // Calcola tasso di conversione
@@ -236,7 +236,7 @@ export class StatisticheService {
       if (!acc[mese]) {
         acc[mese] = 0;
       }
-      acc[mese] += preventivo.total;
+      acc[mese] += preventivo.total_amount;
       
       return acc;
     }, {} as Record<string, number>);
@@ -265,7 +265,7 @@ export class StatisticheService {
       // Query per periodo precedente
       let queryPrecedente = supabase
         .from('preventivi')
-        .select('total')
+        .select('total_amount')
         .eq('status', PreventiveStatus.ACCETTATO)
         .gte('created_at', inizioPrecedente.toISOString().split('T')[0])
         .lte('created_at', finePrecedente.toISOString().split('T')[0]);
@@ -277,7 +277,7 @@ export class StatisticheService {
       const { data: preventiviPrecedenti } = await queryPrecedente;
       
       const fatturatoAttuale = await this.getFatturatoTotale(filtri);
-      const fatturatoPrecedente = preventiviPrecedenti?.reduce((sum, p) => sum + p.total, 0) || 0;
+      const fatturatoPrecedente = preventiviPrecedenti?.reduce((sum, p) => sum + p.total_amount, 0) || 0;
 
       if (fatturatoPrecedente === 0) return 0;
       
@@ -297,7 +297,7 @@ export class StatisticheService {
 
     let query = supabase
       .from('preventivi')
-      .select('total')
+      .select('total_amount')
       .eq('status', PreventiveStatus.ACCETTATO)
       .gte('created_at', dataInizio)
       .lte('created_at', dataFine);
@@ -307,7 +307,7 @@ export class StatisticheService {
     }
 
     const { data: preventivi } = await query;
-    return preventivi?.reduce((sum, p) => sum + p.total, 0) || 0;
+    return preventivi?.reduce((sum, p) => sum + p.total_amount, 0) || 0;
   }
 
   /**

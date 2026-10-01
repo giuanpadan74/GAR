@@ -3,7 +3,10 @@ import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import MapTerritoriesView from '../MapTerritoriesView';
 import geoService from '../../services/geoService';
+import authServiceSimple from '../../services/authServiceSimple';
+import userMunicipalityService from '../../services/userMunicipalityService';
 import { supabase } from '../../services/supabaseClient';
+import { toast } from 'sonner';
 
 // Mock dei servizi
 vi.mock('../../services/geoService', () => {
@@ -42,10 +45,11 @@ vi.mock('../../services/userMunicipalityService', () => ({
 
 vi.mock('maplibre-gl', () => ({
     __esModule: true,
-    default: {}
+    default: {},
+    setWorkerUrl: vi.fn()
 }));
 
-vi.mock('react-map-gl', () => ({
+vi.mock('react-map-gl/maplibre', () => ({
     __esModule: true,
     default: ({ children }: any) => <div data-testid="react-map-gl">{children}</div>,
     Source: ({ children }: any) => <div data-testid="map-source">{children}</div>,
@@ -125,11 +129,9 @@ describe('MapTerritoriesView - Funzionalità Regione', () => {
         (geoService.getMunicipalitiesByCodes as any).mockResolvedValue(mockMunicipalities);
         (geoService.getMunicipalitiesByProvince as any).mockResolvedValue([]);
 
-        const auth = require('../../services/authServiceSimple').default;
-        auth.getAllUserProfiles.mockResolvedValue(mockUsers);
+        (authServiceSimple.getAllUserProfiles as any).mockResolvedValue(mockUsers);
 
-        const userMunicipalityService = require('../../services/userMunicipalityService').default;
-        userMunicipalityService.getUserMunicipalities.mockResolvedValue({
+        (userMunicipalityService.getUserMunicipalities as any).mockResolvedValue({
             data: [{ municipality_code: 1001 }]
         });
     });
@@ -137,12 +139,7 @@ describe('MapTerritoriesView - Funzionalità Regione', () => {
     it('dovrebbe caricare e visualizzare i comuni di una regione selezionata', async () => {
         const user = userEvent.setup();
         
-        render(
-            <MapTerritoriesView
-                users={mockUsers}
-                userMunicipalities={mockUserMunicipalities}
-            />
-        );
+        render(<MapTerritoriesView />);
 
         // Attendi che il componente si carichi
         await waitFor(() => {
@@ -169,17 +166,12 @@ describe('MapTerritoriesView - Funzionalità Regione', () => {
         
         // Mock errore nel caricamento
         (geoService.getMunicipalitiesByRegion as any).mockRejectedValue(new Error('Errore di rete'));
-        
+
         // Mock toast per verificare che venga mostrato
         const mockToast = vi.fn();
-        vi.spyOn(require('sonner'), 'toast').mockImplementation(mockToast);
+        const toastSpy = vi.spyOn(toast, 'error').mockImplementation(mockToast);
 
-        render(
-            <MapTerritoriesView
-                users={mockUsers}
-                userMunicipalities={mockUserMunicipalities}
-            />
-        );
+        render(<MapTerritoriesView />);
 
         await waitFor(() => {
             expect(geoService.getRegions).toHaveBeenCalled();
@@ -191,19 +183,14 @@ describe('MapTerritoriesView - Funzionalità Regione', () => {
 
         // Verifica che venga mostrato un messaggio di errore
         await waitFor(() => {
-            expect(mockToast).toHaveBeenCalledWith('Errore nel caricamento dei comuni della regione');
+            expect(toastSpy).toHaveBeenCalledWith('Errore nel caricamento dei comuni della regione');
         });
     });
 
     it('dovrebbe mostrare popup corretti per comuni assegnati e non assegnati', async () => {
         const user = userEvent.setup();
         
-        render(
-            <MapTerritoriesView
-                users={mockUsers}
-                userMunicipalities={mockUserMunicipalities}
-            />
-        );
+        render(<MapTerritoriesView />);
 
         await waitFor(() => {
             expect(geoService.getRegions).toHaveBeenCalled();
@@ -228,12 +215,7 @@ describe('MapTerritoriesView - Funzionalità Regione', () => {
         // Mock regione senza comuni
         (geoService.getMunicipalitiesByRegion as any).mockResolvedValue([]);
 
-        render(
-            <MapTerritoriesView
-                users={mockUsers}
-                userMunicipalities={mockUserMunicipalities}
-            />
-        );
+        render(<MapTerritoriesView />);
 
         await waitFor(() => {
             expect(geoService.getRegions).toHaveBeenCalled();

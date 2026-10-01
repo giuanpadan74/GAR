@@ -5,7 +5,7 @@
 import React, { useState, useEffect } from 'react';
 import { EyeIcon, EyeSlashIcon, UserIcon, EnvelopeIcon, LockClosedIcon, PhoneIcon, BriefcaseIcon, CheckCircleIcon, XCircleIcon } from '@heroicons/react/24/outline';
 import { useAuth } from '../../contexts/AuthContextSimple';
-import type { SignUpData } from '../../services/authService';
+import type { SignUpData } from '../../services/authServiceSimple';
 
 interface RegisterFormProps {
   onSuccess?: () => void;

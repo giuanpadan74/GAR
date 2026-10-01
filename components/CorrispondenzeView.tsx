@@ -473,7 +473,7 @@ const CorrispondenzeView: React.FC = () => {
             saeFilter={saeFilter}
             setSaeFilter={setSaeFilter}
             rawData={rawData}
-            isAdmin={isAdmin}
+            isAdmin={isAdmin()}
             onDataUpdate={setRawData}
           />
         </div>

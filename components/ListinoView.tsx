@@ -1,12 +1,10 @@
 import React, { Suspense } from 'react';
-import { useAuth } from '../contexts/AuthContextSimple';
 import { Package } from 'lucide-react';
 
 // Import lazy del componente prodotti
 const ProdottiTab = React.lazy(() => import('./listino/ProdottiTab'));
 
 const ListinoView: React.FC = () => {
-  const { profile } = useAuth();
 
   // Componente di loading per Suspense
   const LoadingSpinner = () => (

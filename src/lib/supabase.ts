@@ -63,7 +63,8 @@ function shouldRetry(err: any): boolean {
  * - Se il risultato contiene `error`, valuta la retry logic
  */
 export async function withRetry<T>(
-  fn: () => Promise<T>,
+  // I builder PostgREST sono thenable ma non sono Promise: accettiamo entrambi
+  fn: () => PromiseLike<T> | Promise<T>,
   {
     retries = 2,
     baseDelayMs = 150,

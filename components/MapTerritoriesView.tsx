@@ -5,11 +5,13 @@ import { type ProfileData } from '../services/authServiceSimple';
 import authServiceSimple from '../services/authServiceSimple';
 import UserMunicipalityService from '../services/userMunicipalityService';
 import { MapIconSolid, UserIcon, PhoneIcon, EnvelopeIcon, SpinnerIcon } from './Icons';
-import maplibregl from 'maplibre-gl';
-import ReactMapGL, { Source, Layer, Popup } from 'react-map-gl';
+import { setWorkerUrl } from 'maplibre-gl';
+// L'entrypoint 'react-map-gl' espone i tipi Mapbox: per maplibre va usato il subpath
+import ReactMapGL, { Source, Layer, Popup } from 'react-map-gl/maplibre';
 import { toast } from 'sonner';
 
-maplibregl.workerUrl = "https://unpkg.com/maplibre-gl@4.1.2/dist/maplibre-gl.worker.js";
+// maplibre-gl 4.x espone setWorkerUrl come funzione (non più proprietà del namespace)
+setWorkerUrl("https://unpkg.com/maplibre-gl@4.1.2/dist/maplibre-gl.worker.js");
 
 const MAP_STYLE = 'https://demotiles.maplibre.org/style.json';
 
@@ -672,6 +674,7 @@ const MapTerritoriesView: React.FC = () => {
                     <SpinnerIcon className="w-10 h-10 animate-spin text-roloil-purple" />
                   </div>
                 )}
+                <div className="map-container rounded-lg">
                 <ReactMapGL
                     ref={mapRef}
                     {...viewState}
@@ -680,7 +683,6 @@ const MapTerritoriesView: React.FC = () => {
                         width: '100%',
                         height: 'clamp(475px, 79vh, 950px)'
                     }}
-                    mapLib={maplibregl}
                     mapStyle={MAP_STYLE}
                     onMouseMove={onHover}
                     onClick={onClick}
@@ -706,7 +708,6 @@ const MapTerritoriesView: React.FC = () => {
                         }
                     }}
                     interactiveLayerIds={['municipalities-fill', 'municipalities-interactive', 'all-municipalities-interactive', 'all-municipalities-borders', 'region-municipalities-interactive']}
-                    className="rounded-lg map-container"
                 >
                     <Source id="municipalities" type="geojson" data={geojsonData}>
                         <Layer 
@@ -990,6 +991,7 @@ const MapTerritoriesView: React.FC = () => {
                         </Popup>
                     )}
                 </ReactMapGL>
+                </div>
 
                  {geojsonData.features.length === 0 && !isLoading && (
                     <div className="absolute inset-0 flex items-center justify-center pointer-events-none">

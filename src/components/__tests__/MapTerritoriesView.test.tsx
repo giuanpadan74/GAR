@@ -1,5 +1,5 @@
 import React from 'react';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { render, screen, fireEvent, createEvent, waitFor } from '@testing-library/react';
 import '@testing-library/jest-dom';
 import { vi } from 'vitest';
 import MapTerritoriesView from '../../../components/MapTerritoriesView';
@@ -94,11 +94,12 @@ vi.mock('../../../components/Icons', () => ({
 
 vi.mock('maplibre-gl', () => ({
   __esModule: true,
-  default: {}
+  default: {},
+  setWorkerUrl: vi.fn()
 }));
 
 // Mock di react-map-gl
-vi.mock('react-map-gl', () => {
+vi.mock('react-map-gl/maplibre', () => {
   const React = require('react');
 
   const ReactMapGL = React.forwardRef(
@@ -157,6 +158,18 @@ vi.mock('react-map-gl', () => {
   };
 });
 
+// fireEvent(el, init) non propaga proprietà non standard come `features`/`lngLat`:
+// creiamo un evento reale e le assegniamo, come farebbe maplibre-gl.
+const fireMapEvent = (
+  element: HTMLElement,
+  type: 'click' | 'mouseMove',
+  payload: { features?: unknown[]; lngLat?: unknown }
+) => {
+  const event = createEvent[type](element, payload);
+  Object.assign(event, payload);
+  fireEvent(element, event);
+};
+
 describe('MapTerritoriesView', () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -198,7 +211,7 @@ describe('MapTerritoriesView', () => {
       lngLat: { lng: 9.1859, lat: 45.4654 }
     };
 
-    fireEvent.click(mapElement, mockEvent);
+    fireMapEvent(mapElement, 'click', mockEvent);
 
     // Verifica che il popup venga mostrato
     await waitFor(() => {
@@ -228,14 +241,15 @@ describe('MapTerritoriesView', () => {
       lngLat: { lng: 9.1859, lat: 45.4654 }
     };
 
-    fireEvent.click(mapElement, mockEvent);
+    fireMapEvent(mapElement, 'click', mockEvent);
 
     await waitFor(() => {
       const popup = screen.getByTestId('map-popup');
       expect(popup).toBeInTheDocument();
       
-      // Verifica che le informazioni principali siano presenti
-      expect(screen.getByText('Milano')).toBeInTheDocument();
+      // Verifica che le informazioni principali siano presenti.
+      // 'Milano' compare nel titolo del popup e nella riga dei dati: usiamo getAllByText.
+      expect(screen.getAllByText('Milano').length).toBeGreaterThan(0);
       expect(screen.getByText('Provincia:')).toBeInTheDocument();
       expect(screen.getByText('Codice:')).toBeInTheDocument();
       expect(screen.getByText('Agente:')).toBeInTheDocument();
@@ -264,7 +278,7 @@ describe('MapTerritoriesView', () => {
       lngLat: { lng: 9.1859, lat: 45.4654 }
     };
 
-    fireEvent.click(mapElement, mockEvent);
+    fireMapEvent(mapElement, 'click', mockEvent);
 
     await waitFor(() => {
       expect(screen.getByTestId('map-popup')).toBeInTheDocument();
@@ -299,7 +313,7 @@ describe('MapTerritoriesView', () => {
       lngLat: { lng: 9.1859, lat: 45.4654 }
     };
 
-    fireEvent.mouseMove(mapElement, mockEvent);
+    fireMapEvent(mapElement, 'mouseMove', mockEvent);
 
     // Verifica che l'hover venga gestito
     await waitFor(() => {
@@ -329,7 +343,7 @@ describe('MapTerritoriesView', () => {
       lngLat: { lng: 9.1859, lat: 45.4654 }
     };
 
-    fireEvent.click(mapElement, mockEvent);
+    fireMapEvent(mapElement, 'click', mockEvent);
 
     // Il componente dovrebbe gestire l'errore gracefully
     await waitFor(() => {
@@ -360,15 +374,16 @@ describe('MapTerritoriesView', () => {
       lngLat: { lng: 12.4859, lat: 41.9028 }
     };
 
-    fireEvent.click(mapElement, mockEvent);
+    fireMapEvent(mapElement, 'click', mockEvent);
 
     // Verifica che il popup venga mostrato
     await waitFor(() => {
       const popup = screen.getByTestId('map-popup');
       expect(popup).toBeInTheDocument();
       
-      // Verifica che venga mostrato il nome del comune
-      expect(screen.getByText('Roma')).toBeInTheDocument();
+      // Verifica che venga mostrato il nome del comune.
+      // 'Roma' compare sia nel popup sia nel badge "non assegnato": getAllByText.
+      expect(screen.getAllByText('Roma').length).toBeGreaterThan(0);
     });
   });
 });

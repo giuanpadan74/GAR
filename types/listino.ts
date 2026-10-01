@@ -3,6 +3,8 @@
  * Definisce interfacce per prodotti, scale di sconto, preventivi e import Excel
  */
 
+import type { Database } from './database';
+
 // Enums per categorie e stati
 export enum ProductCategory {
   CARBURANTI = 'carburanti',
@@ -76,55 +78,53 @@ export interface Product {
   obsoleto?: boolean; // Campo per marcare prodotti obsoleti
   prezzo_old?: number; // Vecchio prezzo (deprecated - usare prezzo_aprile_2026)
   prezzo_aprile_2026?: number; // Prezzo di aprile 2026 per confronto variazioni
+  prezzo_marzo_2026?: number; // Prezzo di marzo 2026 per confronto variazioni
   varprezz?: number; // Variazione prezzo in euro
   variaz?: number; // Variazione prezzo percentuale
   created_at: string;
   updated_at: string;
 }
 
-export interface DiscountScale {
-  id: string;
-  scale_type: DiscountScaleType;
-  name: string;
-  description?: string;
-  discount_percentage: number;
-  active: boolean;
-  created_at: string;
-  updated_at: string;
-}
+// La tabella `discount_scales` non esiste: le scale stanno tutte in `scales`.
+// ListinoService.getDiscountScales() e getScales() restituiscono la stessa struttura.
+export type DiscountScale = Scale;
 
+// Allineato alla tabella `preventivi`
 export interface Preventivo {
   id: string;
   numero: string;
   agent_id: string;
+  created_by: string;
   client_name: string;
-  client_email?: string;
-  client_phone?: string;
-  client_address?: string;
-  discount_scale_id: string;
+  client_email?: string | null;
+  client_phone?: string | null;
+  client_address?: string | null;
   status: PreventiveStatus;
   subtotal: number;
-  discount_amount: number;
-  conou_tax_total: number;
-  total: number;
-  valid_until: string;
-  notes?: string;
+  total_discount: number;
+  total_tax: number;
+  total_amount: number;
+  valid_until?: string | null;
+  notes?: string | null;
+  sent_at?: string | null;
   created_at: string;
   updated_at: string;
 }
 
+// Allineato alla tabella `preventivi_items`
 export interface PreventivoRiga {
   id: string;
   preventivo_id: string;
   product_id: string;
   quantity: number;
   unit_price: number;
-  discount_percentage: number;
-  subtotal: number;
-  conou_tax: number;
-  total: number;
-  notes?: string;
+  discount_percentage?: number | null;
+  line_subtotal: number;
+  line_discount: number;
+  line_total: number;
+  notes?: string | null;
   created_at: string;
+  updated_at: string;
 }
 
 // Tipi per operazioni e calcoli
@@ -140,7 +140,6 @@ export interface PreventivoRigaDetailed extends PreventivoRiga {
 
 export interface PreventivoDetailed extends Preventivo {
   righe: PreventivoRigaDetailed[];
-  discount_scale: DiscountScale;
   agent_name?: string;
 }
 
@@ -159,7 +158,6 @@ export interface ProductFilters {
   xde60?: string;
   aplib1?: string;
   obsoleto?: boolean;
-  promo_only?: boolean;
   page?: number;
   page_size?: number;
 }
@@ -172,6 +170,9 @@ export interface PreventivoFilters {
   date_to?: string;
   numero?: string;
 }
+
+// Riga in fase di modifica dal form: i totali di riga sono calcolati dal servizio
+export type PreventivoRigaInput = Omit<PreventivoRiga, 'id' | 'line_subtotal' | 'line_discount' | 'line_total' | 'created_at' | 'updated_at'>;
 
 
 
@@ -192,72 +193,6 @@ export interface ImportResult {
   totalRows: number;
   importedRows: number;
   updatedRows: number;
-  errors: string[];
-  warnings: string[];
-}
-
-// =====================================================
-// TIPI PER IMPORT PROMOZIONI
-// =====================================================
-
-// Riga parsed dal file Excel delle promozioni
-export interface ParsedPromoRow {
-  apcpro: string; // Codice prodotto (chiave di ricerca)
-  apcimb?: string; // Codice imballo
-  promoPrezzo?: number; // Prezzo promozionale
-  descrizione?: string; // Descrizione prodotto (opzionale dall'Excel)
-  imballo?: string; // Descrizione imballo (opzionale dall'Excel)
-  qty?: number; // Quantità (opzionale dall'Excel)
-  uvr?: string; // Unità di vendita (opzionale dall'Excel)
-  listino?: number; // Listino (opzionale dall'Excel)
-  rowNumber: number; // Numero riga originale nel file Excel
-}
-
-// Info su un prodotto trovato nel DB durante la preview
-export interface PromoProductInfo {
-  apcpro: string;
-  productId: string;
-  descrizione?: string;
-  hasExistingPromo: boolean; // true se ha già promoDAL/promoAL/promoPrezzo valorizzati
-  currentPromoDAL?: string;
-  currentPromoAL?: string;
-  currentPromoPrezzo?: number;
-  newPromoPrezzo?: number;
-  newApcimb?: string;
-}
-
-// Prodotto non trovato nel DB - contiene i dati dalla riga Excel
-export interface NotFoundPromoProduct {
-  apcpro: string;
-  apcimb?: string;
-  descrizione?: string;
-  imballo?: string;
-  qty?: number;
-  uvr?: string;
-  listino?: number;
-  listinoPromo?: number;
-  rowNumber: number;
-}
-
-// Risultato della preview (prima di applicare le modifiche)
-export interface ImportPromoPreview {
-  totalRows: number;
-  parsedRows: ParsedPromoRow[];
-  foundProducts: PromoProductInfo[];
-  notFoundCodes: NotFoundPromoProduct[]; // Prodotti non trovati nel DB
-  existingPromoCount: number; // Quanti prodotti hanno già campi promo valorizzati
-  duplicateCodes: string[]; // Codici CPROD duplicati nel file
-  errors: string[];
-}
-
-// Risultato dell'applicazione delle promo
-export interface ImportPromoResult {
-  success: boolean;
-  totalRows: number;
-  updatedRows: number;
-  skippedRows: number;
-  notFoundCodes: NotFoundPromoProduct[];
-  updatedCodes: string[];
   errors: string[];
   warnings: string[];
 }
@@ -301,10 +236,17 @@ export interface PreventivoStats {
 }
 
 // Utility types
-export type CreateProductInput = Omit<Product, 'id' | 'created_at' | 'updated_at'>;
-export type UpdateProductInput = Partial<CreateProductInput>;
-export type CreatePreventivoInput = Omit<Preventivo, 'id' | 'numero' | 'created_at' | 'updated_at'>;
-export type CreatePreventivoRigaInput = Omit<PreventivoRiga, 'id' | 'created_at'>;
+// Create/Update derivano dalle colonne reali della tabella `products`: il tipo
+// Product contiene anche campi legacy (category, code, name, base_price...)
+// che non esistono lato DB e non vanno mandate in scrittura.
+export type CreateProductInput = Database['public']['Tables']['products']['Insert'];
+export type UpdateProductInput = Database['public']['Tables']['products']['Update'];
+export type CreatePreventivoInput = Omit<
+  Preventivo,
+  'id' | 'numero' | 'created_at' | 'updated_at' | 'sent_at' | 'subtotal' | 'total_discount' | 'total_tax' | 'total_amount'
+>;
+// I totali di riga (line_subtotal/line_discount/line_total) sono calcolati dal servizio
+export type CreatePreventivoRigaInput = PreventivoRigaInput;
 
 // Tipi di compatibilità per la transizione
 export interface LegacyProduct {
@@ -325,31 +267,18 @@ export interface LegacyProduct {
 // INTERFACCE PER IL CALCOLATORE PREZZI
 // =====================================================
 
-// Interfaccia per le scale di commissioni dalla tabella 'scales'
-export interface CommissionScale {
+// Interfaccia per le scale di commissioni dalla tabella `scales`, nella forma
+// esposta da ListinoService.getScales()/getScalesByType() (camelCase)
+export interface Scale {
   id: string;
-  scale: string; // A, B, C, E, P
-  commission: number; // Provvigione come decimale (0.15 = 15%)
+  scale: string; // Scala: 'A' | 'B' | 'C' | 'D' | 'E' | 'P'
+  commission: number; // Provv come decimale (0.05 = 5%)
   discount: number; // Sconto in euro
-  provv_minima: boolean; // Flag per provvigione minima
+  provv_minima: boolean; // colonna minprov
   is_active: boolean;
   created_at: string;
   updated_at: string;
 }
-
-// Interfaccia aggiornata per la tabella 'scales' con campo provvmin
-export interface Scale {
-  id?: number;
-  Scala: 'A' | 'B' | 'C' | 'D' | 'E' | 'P';
-  Sconto: number;
-  Provv: number;
-  provvmin: boolean; // Campo boolean per provvigione minima
-  created_at?: string;
-  updated_at?: string;
-}
-
-// Alias per compatibilità con il codice esistente
-export interface ScaleData extends CommissionScale {}
 
 // Articolo nel calcolatore
 export interface CalculatorItem {

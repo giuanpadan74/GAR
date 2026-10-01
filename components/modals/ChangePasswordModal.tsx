@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { XIcon } from '../Icons';
+import { XIcon, SpinnerIcon } from '../Icons';
 
 interface UserProfile {
   id: string;

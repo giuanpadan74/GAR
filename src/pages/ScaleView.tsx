@@ -214,16 +214,11 @@ const ScaleView: React.FC = () => {
 
       const createdScale = await ScaleService.createScale(newScale);
       
-      // Aggiorna lo stato locale invece di ricaricare i dati
-      const newScaleWithId: Scale = {
-        ...newScale,
-        id: createdScale.id || Date.now().toString(), // Fallback se l'API non restituisce un ID
-      };
-      
-      setScales(prevScales => [newScaleWithId, ...prevScales]);
-      
+      // Usa la riga restituita dal DB: contiene id e timestamp reali
+      setScales(prevScales => [createdScale, ...prevScales]);
+
       toast.success('Scala creata con successo');
-      
+
       // Resetta lo stato
       setIsAddingNewRow(false);
       setNewRowData({
@@ -287,15 +282,15 @@ const ScaleView: React.FC = () => {
         updateData.minprov = editingState.value as boolean;
       }
 
-      // Prepara i dati completi per l'aggiornamento
+      // Scala, Provv e minprov sono nullable lato DB
       const fullUpdateData: ScaleFormData = {
-        Scala: scale.Scala,
+        Scala: scale.Scala as ScaleFormData['Scala'],
         Sconto: updateData.Sconto ?? scale.Sconto,
-        Provv: updateData.Provv ?? scale.Provv,
-        minprov: updateData.minprov ?? scale.minprov
+        Provv: updateData.Provv ?? scale.Provv ?? 0,
+        minprov: updateData.minprov ?? scale.minprov ?? false
       };
 
-      await ScaleService.updateScale(scale.id!, fullUpdateData);
+      await ScaleService.updateScale(scale.id, fullUpdateData);
       
       // Aggiorna lo stato locale invece di ricaricare i dati
       setScales(prevScales => 
@@ -366,14 +361,9 @@ const ScaleView: React.FC = () => {
       // Solo creazione (abbiamo rimosso la modifica)
       const createdScale = await ScaleService.createScale(formData);
       
-      // Aggiorna lo stato locale invece di ricaricare i dati
-      const newScaleWithId: Scale = {
-        ...formData,
-        id: createdScale.id || Date.now().toString(), // Fallback se l'API non restituisce un ID
-      };
-      
-      setScales(prevScales => [newScaleWithId, ...prevScales]);
-      
+      // Usa la riga restituita dal DB: contiene id e timestamp reali
+      setScales(prevScales => [createdScale, ...prevScales]);
+
       toast.success('Scala creata con successo');
       setShowModal(false);
     } catch (err) {
@@ -861,13 +851,13 @@ const ScaleView: React.FC = () => {
                           
                           try {
                             const updateData: ScaleFormData = {
-                              Scala: scale.Scala,
+                              Scala: scale.Scala as ScaleFormData['Scala'],
                               Sconto: scale.Sconto,
-                              Provv: scale.Provv,
+                              Provv: scale.Provv ?? 0,
                               minprov: e.target.checked
                             };
                             
-                            await ScaleService.updateScale(scale.id!, updateData);
+                            await ScaleService.updateScale(scale.id, updateData);
                             
                             // Aggiorna lo stato locale invece di ricaricare i dati
                             setScales(prevScales => 

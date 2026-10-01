@@ -5,6 +5,7 @@
 
 import { supabase } from './supabaseClient';
 import { ListinoService } from './listinoService';
+import type { Database } from '../types/database';
 import type {
   Preventivo,
   PreventivoRiga,
@@ -13,18 +14,57 @@ import type {
   CreatePreventivoInput,
   CreatePreventivoRigaInput,
   PreventivoFilters,
-  PreventiveStatus,
   Product,
-  DiscountScale,
   ExportOptions,
   CompanyInfo,
   PreventivoStats
 } from '../types/listino';
+import { PreventiveStatus } from '../types/listino';
+
+type PreventivoRow = Database['public']['Tables']['preventivi']['Row'];
+type PreventivoItemRow = Database['public']['Tables']['preventivi_items']['Row'];
 
 /**
  * Servizio principale per la gestione dei preventivi
  */
 export class PreventiviService {
+
+  private static readonly IVA_RATE = 0.22;
+
+  private static round2(value: number): number {
+    return Math.round(value * 100) / 100;
+  }
+
+  /**
+   * Calcola i totali di una riga: subtotale, sconto e totale netto
+   */
+  private static calculateRigaTotals(
+    quantity: number,
+    unitPrice: number,
+    discountPercentage: number
+  ): { line_subtotal: number; line_discount: number; line_total: number } {
+    const lineSubtotal = quantity * unitPrice;
+    const lineDiscount = (lineSubtotal * discountPercentage) / 100;
+    return {
+      line_subtotal: this.round2(lineSubtotal),
+      line_discount: this.round2(lineDiscount),
+      line_total: this.round2(lineSubtotal - lineDiscount)
+    };
+  }
+
+  /**
+   * La colonna `status` è un text libero lato DB: qui viene ristretta all'enum applicativo.
+   */
+  private static toPreventivo(row: PreventivoRow): Preventivo {
+    return { ...row, status: row.status as PreventiveStatus };
+  }
+
+  private static toRiga(row: PreventivoItemRow): PreventivoRiga {
+    return {
+      ...row,
+      discount_percentage: row.discount_percentage ?? 0
+    };
+  }
 
   /**
    * Genera un nuovo numero preventivo
@@ -49,22 +89,28 @@ export class PreventiviService {
   /**
    * Crea un nuovo preventivo
    */
-  static async createPreventivo(preventivoData: CreatePreventivoInput): Promise<Preventivo> {
+  static async createPreventivo(
+    preventivoData: CreatePreventivoInput
+  ): Promise<Preventivo> {
     try {
       const numero = await this.generatePreventivoNumber();
-      
+
       const { data, error } = await supabase
         .from('preventivi')
         .insert([{
           ...preventivoData,
           numero,
-          status: PreventiveStatus.BOZZA
+          status: preventivoData.status ?? PreventiveStatus.BOZZA,
+          subtotal: 0,
+          total_discount: 0,
+          total_tax: 0,
+          total_amount: 0
         }])
         .select()
         .single();
 
       if (error) throw error;
-      return data;
+      return this.toPreventivo(data);
     } catch (error) {
       console.error('Errore nella creazione preventivo:', error);
       throw new Error('Impossibile creare il preventivo');
@@ -78,10 +124,7 @@ export class PreventiviService {
     try {
       const { data: preventivo, error: preventivoError } = await supabase
         .from('preventivi')
-        .select(`
-          *,
-          discount_scales (*)
-        `)
+        .select('*')
         .eq('id', id)
         .single();
 
@@ -90,7 +133,7 @@ export class PreventiviService {
 
       // Recupera le righe del preventivo con i dettagli dei prodotti
       const { data: righe, error: righeError } = await supabase
-        .from('preventivo_righe')
+        .from('preventivi_items')
         .select(`
           *,
           products (*)
@@ -101,12 +144,11 @@ export class PreventiviService {
       if (righeError) throw righeError;
 
       return {
-        ...preventivo,
-        discount_scale: preventivo.discount_scales,
-        righe: righe?.map(riga => ({
-          ...riga,
-          product: riga.products
-        })) || []
+        ...this.toPreventivo(preventivo),
+        righe: (righe ?? []).map(riga => ({
+          ...this.toRiga(riga),
+          product: riga.products as unknown as Product
+        })) as PreventivoRigaDetailed[]
       };
     } catch (error) {
       console.error('Errore nel recupero preventivo:', error);
@@ -150,9 +192,9 @@ export class PreventiviService {
       }
 
       const { data, error } = await query;
-      
+
       if (error) throw error;
-      return data || [];
+      return (data ?? []).map(row => this.toPreventivo(row));
     } catch (error) {
       console.error('Errore nel recupero preventivi:', error);
       throw new Error('Impossibile recuperare i preventivi');
@@ -164,25 +206,21 @@ export class PreventiviService {
    */
   static async addRigaPreventivo(rigaData: CreatePreventivoRigaInput): Promise<PreventivoRiga> {
     try {
-      // Recupera il prodotto per calcolare i prezzi
+      // Recupera il prodotto per verificare che esista
       const product = await ListinoService.getProductById(rigaData.product_id);
       if (!product) {
         throw new Error('Prodotto non trovato');
       }
 
-      // Calcola i totali della riga
-      const subtotal = rigaData.quantity * rigaData.unit_price;
-      const discountAmount = (subtotal * rigaData.discount_percentage) / 100;
-      const discountedSubtotal = subtotal - discountAmount;
-      const total = discountedSubtotal;
+      const totals = this.calculateRigaTotals(
+        rigaData.quantity,
+        rigaData.unit_price,
+        rigaData.discount_percentage ?? 0
+      );
 
       const { data, error } = await supabase
-        .from('preventivo_righe')
-        .insert([{
-          ...rigaData,
-          subtotal: Math.round(subtotal * 100) / 100,
-          total: Math.round(total * 100) / 100
-        }])
+        .from('preventivi_items')
+        .insert([{ ...rigaData, ...totals }])
         .select()
         .single();
 
@@ -191,7 +229,7 @@ export class PreventiviService {
       // Ricalcola i totali del preventivo
       await this.recalculatePreventivoTotals(rigaData.preventivo_id);
 
-      return data;
+      return this.toRiga(data);
     } catch (error) {
       console.error('Errore nell\'aggiunta riga preventivo:', error);
       throw new Error('Impossibile aggiungere la riga al preventivo');
@@ -202,36 +240,28 @@ export class PreventiviService {
    * Aggiorna una riga del preventivo
    */
   static async updateRigaPreventivo(
-    rigaId: string, 
+    rigaId: string,
     updates: Partial<CreatePreventivoRigaInput>
   ): Promise<PreventivoRiga> {
     try {
       // Recupera la riga esistente
       const { data: existingRiga, error: fetchError } = await supabase
-        .from('preventivo_righe')
-        .select('*, products (*)')
+        .from('preventivi_items')
+        .select('*')
         .eq('id', rigaId)
         .single();
 
       if (fetchError) throw fetchError;
 
-      // Calcola i nuovi totali se necessario
-      const quantity = updates.quantity ?? existingRiga.quantity;
-      const unitPrice = updates.unit_price ?? existingRiga.unit_price;
-      const discountPercentage = updates.discount_percentage ?? existingRiga.discount_percentage;
-
-      const subtotal = quantity * unitPrice;
-      const discountAmount = (subtotal * discountPercentage) / 100;
-      const discountedSubtotal = subtotal - discountAmount;
-      const total = discountedSubtotal;
+      const totals = this.calculateRigaTotals(
+        updates.quantity ?? existingRiga.quantity,
+        updates.unit_price ?? existingRiga.unit_price,
+        updates.discount_percentage ?? existingRiga.discount_percentage ?? 0
+      );
 
       const { data, error } = await supabase
-        .from('preventivo_righe')
-        .update({
-          ...updates,
-          subtotal: Math.round(subtotal * 100) / 100,
-          total: Math.round(total * 100) / 100
-        })
+        .from('preventivi_items')
+        .update({ ...updates, ...totals })
         .eq('id', rigaId)
         .select()
         .single();
@@ -241,7 +271,7 @@ export class PreventiviService {
       // Ricalcola i totali del preventivo
       await this.recalculatePreventivoTotals(existingRiga.preventivo_id);
 
-      return data;
+      return this.toRiga(data);
     } catch (error) {
       console.error('Errore nell\'aggiornamento riga preventivo:', error);
       throw new Error('Impossibile aggiornare la riga del preventivo');
@@ -255,7 +285,7 @@ export class PreventiviService {
     try {
       // Recupera l'ID del preventivo prima di eliminare
       const { data: riga, error: fetchError } = await supabase
-        .from('preventivo_righe')
+        .from('preventivi_items')
         .select('preventivo_id')
         .eq('id', rigaId)
         .single();
@@ -263,7 +293,7 @@ export class PreventiviService {
       if (fetchError) throw fetchError;
 
       const { error } = await supabase
-        .from('preventivo_righe')
+        .from('preventivi_items')
         .delete()
         .eq('id', rigaId);
 
@@ -284,27 +314,27 @@ export class PreventiviService {
     try {
       // Recupera tutte le righe del preventivo
       const { data: righe, error: righeError } = await supabase
-        .from('preventivo_righe')
-        .select('*')
+        .from('preventivi_items')
+        .select('line_subtotal, line_discount, line_total')
         .eq('preventivo_id', preventivoId);
 
       if (righeError) throw righeError;
 
-      // Calcola i totali
-      const subtotal = righe?.reduce((sum, riga) => sum + riga.subtotal, 0) || 0;
-      const discountAmount = righe?.reduce((sum, riga) => {
-        const rigaDiscount = (riga.subtotal * riga.discount_percentage) / 100;
-        return sum + rigaDiscount;
-      }, 0) || 0;
-      const total = subtotal - discountAmount;
+      // Calcola i totali: subtotale = somma righe, sconto = somma sconti riga
+      const lineSubtotalSum = righe?.reduce((sum, riga) => sum + riga.line_subtotal, 0) || 0;
+      const discountAmount = righe?.reduce((sum, riga) => sum + riga.line_discount, 0) || 0;
+      const netAmount = lineSubtotalSum - discountAmount;
+      const ivaAmount = netAmount * this.IVA_RATE;
+      const total = netAmount + ivaAmount;
 
       // Aggiorna il preventivo
       const { error: updateError } = await supabase
         .from('preventivi')
         .update({
-          subtotal: Math.round(subtotal * 100) / 100,
-          discount_amount: Math.round(discountAmount * 100) / 100,
-          total: Math.round(total * 100) / 100
+          subtotal: this.round2(lineSubtotalSum),
+          total_discount: this.round2(discountAmount),
+          total_tax: this.round2(ivaAmount),
+          total_amount: this.round2(total)
         })
         .eq('id', preventivoId);
 
@@ -328,7 +358,7 @@ export class PreventiviService {
         .single();
 
       if (error) throw error;
-      return data;
+      return this.toPreventivo(data);
     } catch (error) {
       console.error('Errore nell\'aggiornamento preventivo:', error);
       throw new Error('Impossibile aggiornare il preventivo');
@@ -348,7 +378,7 @@ export class PreventiviService {
         .single();
 
       if (error) throw error;
-      return data;
+      return this.toPreventivo(data);
     } catch (error) {
       console.error('Errore nell\'aggiornamento stato preventivo:', error);
       throw new Error('Impossibile aggiornare lo stato del preventivo');
@@ -368,14 +398,12 @@ export class PreventiviService {
       // Crea il nuovo preventivo
       const newPreventivo = await this.createPreventivo({
         agent_id: originalPreventivo.agent_id,
+        created_by: originalPreventivo.created_by,
         client_name: `${originalPreventivo.client_name} (Copia)`,
         client_email: originalPreventivo.client_email,
         client_phone: originalPreventivo.client_phone,
         client_address: originalPreventivo.client_address,
-        discount_scale_id: originalPreventivo.discount_scale_id,
-        subtotal: 0,
-        discount_amount: 0,
-        total: 0,
+        status: PreventiveStatus.BOZZA,
         valid_until: originalPreventivo.valid_until,
         notes: originalPreventivo.notes
       });
@@ -431,7 +459,7 @@ export class PreventiviService {
         // Conta per stato
         preventivi.forEach(p => {
           stats.preventivi_by_status[p.status as PreventiveStatus]++;
-          stats.total_value += p.total || 0;
+          stats.total_value += p.total_amount || 0;
         });
 
         // Calcola media
@@ -461,7 +489,7 @@ export class PreventiviService {
     try {
       // Prima elimina le righe
       const { error: righeError } = await supabase
-        .from('preventivo_righe')
+        .from('preventivi_items')
         .delete()
         .eq('preventivo_id', id);
 

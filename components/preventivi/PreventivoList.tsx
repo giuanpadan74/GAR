@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Eye, Edit, Trash2, Download, Search, Filter, Calendar, Euro } from 'lucide-react';
-import { Preventivo } from '../../types/listino';
+import { Preventivo, PreventiveStatus } from '../../types/listino';
 import { format } from 'date-fns';
 import { it } from 'date-fns/locale';
 
@@ -13,7 +13,7 @@ interface PreventivoListProps {
   onExport?: (preventivo: Preventivo) => void;
 }
 
-type SortField = 'numero' | 'cliente_nome' | 'data_creazione' | 'totale' | 'stato';
+type SortField = 'numero' | 'client_name' | 'created_at' | 'total_amount' | 'status';
 type SortDirection = 'asc' | 'desc';
 
 /**
@@ -30,7 +30,7 @@ export const PreventivoList: React.FC<PreventivoListProps> = ({
 }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
-  const [sortField, setSortField] = useState<SortField>('data_creazione');
+  const [sortField, setSortField] = useState<SortField>('created_at');
   const [sortDirection, setSortDirection] = useState<SortDirection>('desc');
   const [showFilters, setShowFilters] = useState(false);
 
@@ -39,9 +39,9 @@ export const PreventivoList: React.FC<PreventivoListProps> = ({
     .filter(preventivo => {
       const matchesSearch = 
         preventivo.numero.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        preventivo.cliente_nome.toLowerCase().includes(searchTerm.toLowerCase());
+        preventivo.client_name.toLowerCase().includes(searchTerm.toLowerCase());
       
-      const matchesStatus = statusFilter === 'all' || preventivo.stato === statusFilter;
+      const matchesStatus = statusFilter === 'all' || preventivo.status === statusFilter;
       
       return matchesSearch && matchesStatus;
     })
@@ -49,7 +49,7 @@ export const PreventivoList: React.FC<PreventivoListProps> = ({
       let aValue: any = a[sortField];
       let bValue: any = b[sortField];
       
-      if (sortField === 'data_creazione') {
+      if (sortField === 'created_at') {
         aValue = new Date(aValue).getTime();
         bValue = new Date(bValue).getTime();
       }
@@ -237,19 +237,19 @@ export const PreventivoList: React.FC<PreventivoListProps> = ({
                     <h3 className="text-lg font-semibold text-gray-900">
                       {preventivo.numero}
                     </h3>
-                    {getStatusBadge(preventivo.stato)}
+                    {getStatusBadge(preventivo.status)}
                   </div>
                   <p className="text-gray-600">
-                    Cliente: {preventivo.cliente_nome}
+                    Cliente: {preventivo.client_name}
                   </p>
                   <div className="flex items-center space-x-4 text-sm text-gray-500">
                     <span className="flex items-center space-x-1">
                       <Calendar className="w-4 h-4" />
-                      <span>{formatDate(preventivo.data_creazione)}</span>
+                      <span>{formatDate(preventivo.created_at)}</span>
                     </span>
                     <span className="flex items-center space-x-1">
                       <Euro className="w-4 h-4" />
-                      <span>€{preventivo.totale.toFixed(2)}</span>
+                      <span>€{preventivo.total_amount.toFixed(2)}</span>
                     </span>
                   </div>
                 </div>
@@ -286,7 +286,7 @@ export const PreventivoList: React.FC<PreventivoListProps> = ({
                     </button>
                   )}
                   
-                  {onDelete && preventivo.stato === 'bozza' && (
+                  {onDelete && preventivo.status === 'bozza' && (
                     <button
                       onClick={() => onDelete(preventivo)}
                       className="p-2 text-gray-600 hover:text-red-600 hover:bg-red-50 rounded-md transition-colors"
@@ -300,13 +300,9 @@ export const PreventivoList: React.FC<PreventivoListProps> = ({
 
               {/* Info aggiuntive */}
               <div className="flex justify-between items-center text-sm">
-                <div className="text-gray-500">
-                  {preventivo.righe?.length || 0} prodotti
-                </div>
-                
-                {preventivo.note && (
+                {preventivo.notes && (
                   <div className="text-gray-500 max-w-xs truncate">
-                    Note: {preventivo.note}
+                    Note: {preventivo.notes}
                   </div>
                 )}
               </div>

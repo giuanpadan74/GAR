@@ -1,5 +1,6 @@
 
-import { createClient } from '@supabase/supabase-js';
+import { createClient, type SupabaseClient } from '@supabase/supabase-js';
+import type { Database } from '../types/database';
 
 // Usa le variabili d'ambiente per la configurazione
 export const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || 'https://tctndvmemnllloctyrpn.supabase.co';
@@ -17,12 +18,12 @@ if (!supabaseUrl || !supabaseKey) {
 }
 
 // Singleton pattern per evitare multiple istanze
-let supabaseInstance: ReturnType<typeof createClient> | null = null;
+let supabaseInstance: SupabaseClient<Database> | null = null;
 
 export const supabase = (() => {
   if (!supabaseInstance) {
     console.log('🔧 Inizializzazione client Supabase principale...');
-    supabaseInstance = createClient(supabaseUrl, supabaseKey, {
+    supabaseInstance = createClient<Database>(supabaseUrl, supabaseKey, {
       auth: {
         storage: {
           getItem: (key) => localStorage.getItem(`supabase.auth.${key}`),

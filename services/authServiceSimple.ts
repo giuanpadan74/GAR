@@ -22,6 +22,22 @@ export interface ProfileData {
 
 export type UserRole = 'admin' | 'agente' | 'operatore';
 
+/**
+ * Converte una riga di `profiles` (o il ritorno di una RPC) nel tipo applicativo.
+ * `role` torna come text dal DB e va ristretto all'enum; i campi opzionali
+ * sono compattati per non avere `undefined` espliciti.
+ */
+function toProfileData(row: Record<string, unknown>): ProfileData {
+  const { role, phone_number, created_at, updated_at, ...rest } = row;
+  return {
+    ...(rest as Omit<ProfileData, 'role' | 'phone_number' | 'created_at' | 'updated_at'>),
+    role: role as UserRole,
+    ...(phone_number != null ? { phone_number: String(phone_number) } : {}),
+    ...(created_at != null ? { created_at: String(created_at) } : {}),
+    ...(updated_at != null ? { updated_at: String(updated_at) } : {})
+  };
+}
+
 export interface AuthServiceResponse<T = any> {
   data: T | null;
   error: Error | null;
@@ -39,11 +55,12 @@ export interface SignUpData {
   username: string;
   full_name: string;
   phone_number?: string;
-  role: 'agente' | 'operatore';
+  role: UserRole;
 }
 
-export interface AdminCreateUserData extends SignUpData {
-  role: 'admin' | 'agente' | 'operatore';
+// Solo l'admin può creare un admin: `role` qui non è più ristretto
+export interface AdminCreateUserData extends Omit<SignUpData, 'role'> {
+  role: UserRole;
   territories?: string[];
 }
 
@@ -149,10 +166,12 @@ class AuthServiceSimple {
 
       // La verifica password è già fatta lato RPC; qui è superflua
 
-      console.log('✅ Login riuscito:', profile.email);
-      this.saveSession(profile);
+      const userData = toProfileData(profile as unknown as Record<string, unknown>);
 
-      const userWithoutPassword = { ...profile };
+      console.log('✅ Login riuscito:', userData.email);
+      this.saveSession(userData);
+
+      const userWithoutPassword = { ...userData };
       delete userWithoutPassword.password;
 
       return {
@@ -229,10 +248,12 @@ class AuthServiceSimple {
         return { data: null, error: new Error(msg), success: false };
       }
 
-      console.log('✅ Utente registrato:', profile.email);
-      this.saveSession(profile);
+      const newUser = toProfileData(profile as unknown as Record<string, unknown>);
 
-      const userWithoutPassword = { ...profile };
+      console.log('✅ Utente registrato:', newUser.email);
+      this.saveSession(newUser);
+
+      const userWithoutPassword = { ...newUser };
       delete userWithoutPassword.password;
 
       return {
@@ -318,9 +339,20 @@ class AuthServiceSimple {
         };
       }
 
+      if (!profile) {
+        return {
+          data: null,
+          error: new Error('Creazione del profilo non riuscita'),
+          success: false
+        };
+      }
+
+      const newUser = toProfileData(profile as unknown as Record<string, unknown>);
+
+      // I territori arrivano dall'input del form, non dal profilo appena creato
       if (userData.territories && userData.territories.length > 0) {
         const territoryInserts = userData.territories.map(code => ({
-          user_id: profile.id,
+          user_id: newUser.id,
           municipality_code: parseInt(code)
         }));
 
@@ -333,9 +365,9 @@ class AuthServiceSimple {
         }
       }
 
-      console.log('✅ Utente creato:', profile.email);
+      console.log('✅ Utente creato:', newUser.email);
 
-      const userWithoutPassword = { ...profile };
+      const userWithoutPassword = { ...newUser };
       delete userWithoutPassword.password;
 
       return {
@@ -461,6 +493,27 @@ class AuthServiceSimple {
     } catch (e) {
       return { error: (e as Error).message };
     }
+  }
+
+  /**
+   * Reset password self-service.
+   * L'app autentica contro la tabella `profiles` e non usa Supabase Auth:
+   * non esiste un canale email configurato (nessun provider SMTP/mail in progetto),
+   * quindi il reset non può essere completato lato server.
+   * Il percorso previsto è la richiesta all'amministratore, che usa
+   * changePassword({ userId }) per reimpostare la password.
+   */
+  async resetPassword(params: { email: string }): Promise<AuthServiceResponse<null>> {
+    console.warn(
+      `⚠️ Reset password richiesto per ${params.email}: non disponibile, Serve l'amministratore.`
+    );
+    return {
+      data: null,
+      error: new Error(
+        "Il reset automatico della password non è disponibile. Contatta l'amministratore per reimpostarla."
+      ),
+      success: false
+    };
   }
 
   async deleteUser(userId: string): Promise<AuthServiceResponse<null>> {

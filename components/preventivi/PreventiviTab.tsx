@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { FileText, Plus } from 'lucide-react';
+import { FileText } from 'lucide-react';
 import { toast } from 'sonner';
 
 // Import dei componenti specifici per i preventivi
@@ -8,29 +8,21 @@ import { PreventivoModal } from './PreventivoModal';
 
 // Import dei servizi e hooks
 import { useListino } from '../../hooks/useListino';
-import { Preventivo, PreventivoFilters as PreventivoFiltersType, PreventiveStatus } from '../../types/listino';
+import { Preventivo } from '../../types/listino';
 
 const PreventiviTab: React.FC = () => {
-  // Stati locali per i modali
+  // Stati locali per il modale di dettaglio
   const [showPreventivoModal, setShowPreventivoModal] = useState(false);
-  const [selectedPreventivo, setSelectedPreventivo] = useState<Preventivo | null>(null);
 
   // Hook per gestire i dati dei preventivi
   const {
     preventivi,
-    selectedPreventivo: selectedPreventivoDetailed,
-    preventivoFilters,
+    selectedPreventivo,
     loading,
     error,
     loadPreventivi,
     selectPreventivo,
     clearSelectedPreventivo,
-    updatePreventivoFilters,
-    clearPreventivoFilters,
-    createPreventivo,
-    updatePreventivo,
-    updatePreventivoStatus,
-    duplicatePreventivo,
     deletePreventivo,
     clearError
   } = useListino();
@@ -40,92 +32,37 @@ const PreventiviTab: React.FC = () => {
     const initializePreventiviData = async () => {
       try {
         await loadPreventivi();
-      } catch (error) {
-        console.error('Errore durante il caricamento dei preventivi:', error);
+      } catch (err) {
+        console.error('Errore durante il caricamento dei preventivi:', err);
       }
     };
 
     initializePreventiviData();
   }, [loadPreventivi]);
 
-  // Gestione filtri
-  const handleFilterChange = (filters: Partial<PreventivoFiltersType>) => {
-    updatePreventivoFilters(filters);
-  };
-
-  const handleClearFilters = () => {
-    clearPreventivoFilters();
-  };
-
-  // Gestione creazione preventivo
-  const handleCreatePreventivo = () => {
-    setSelectedPreventivo(null);
-    setShowPreventivoModal(true);
-  };
-
-  // Gestione modifica preventivo
-  const handleEditPreventivo = async (preventivo: Preventivo) => {
+  // Apertura del dettaglio preventivo
+  const handleViewPreventivo = async (preventivo: Preventivo) => {
     try {
       await selectPreventivo(preventivo.id);
-      setSelectedPreventivo(preventivo);
       setShowPreventivoModal(true);
-    } catch (error) {
+    } catch {
       toast.error('Errore nel caricamento del preventivo');
     }
   };
 
-  // Gestione salvataggio preventivo
-  const handleSavePreventivo = async (preventivoData: any) => {
-    try {
-      if (selectedPreventivo) {
-        await updatePreventivo(selectedPreventivo.id, preventivoData);
-        toast.success('Preventivo aggiornato con successo');
-      } else {
-        await createPreventivo(preventivoData);
-        toast.success('Preventivo creato con successo');
-      }
-      setShowPreventivoModal(false);
-      setSelectedPreventivo(null);
-      clearSelectedPreventivo();
-    } catch (error) {
-      toast.error('Errore nel salvataggio del preventivo');
-    }
-  };
-
-  // Gestione chiusura modale
+  // Chiusura del modale
   const handleClosePreventivoModal = () => {
     setShowPreventivoModal(false);
-    setSelectedPreventivo(null);
     clearSelectedPreventivo();
   };
 
-  // Gestione cambio stato preventivo
-  const handleStatusChange = async (id: string, status: PreventiveStatus) => {
-    try {
-      await updatePreventivoStatus(id, status);
-      toast.success('Stato preventivo aggiornato');
-    } catch (error) {
-      toast.error('Errore nell\'aggiornamento dello stato');
-    }
-  };
-
-  // Gestione duplicazione preventivo
-  const handleDuplicatePreventivo = async (id: string) => {
-    try {
-      await duplicatePreventivo(id);
-      toast.success('Preventivo duplicato con successo');
-    } catch (error) {
-      toast.error('Errore nella duplicazione del preventivo');
-    }
-  };
-
   // Gestione eliminazione preventivo
-  const handleDeletePreventivo = async (id: string) => {
+  const handleDeletePreventivo = async (preventivo: Preventivo) => {
     try {
-      await deletePreventivo(id);
-      toast.success('Preventivo eliminato con successo');
-    } catch (error) {
-      toast.error('Errore nell\'eliminazione del preventivo');
+      await deletePreventivo(preventivo.id);
+      toast.success('Preventivo eliminato');
+    } catch {
+      toast.error("Errore nell'eliminazione del preventivo");
     }
   };
 
@@ -149,43 +86,25 @@ const PreventiviTab: React.FC = () => {
 
   return (
     <div className="space-y-6">
-      {/* Header con azioni */}
-      <div className="flex justify-between items-center">
-        <div className="flex items-center space-x-2">
-          <FileText className="h-6 w-6 text-roloil-purple" />
-          <h2 className="text-2xl font-bold text-white">Gestione Preventivi</h2>
-        </div>
-        
-        <button
-          onClick={handleCreatePreventivo}
-          className="flex items-center space-x-2 px-4 py-2 bg-roloil-purple text-white rounded-lg hover:bg-purple-700 transition-colors"
-        >
-          <Plus className="h-4 w-4" />
-          <span>Nuovo Preventivo</span>
-        </button>
+      <div className="flex items-center space-x-2">
+        <FileText className="h-6 w-6 text-roloil-purple" />
+        <h2 className="text-2xl font-bold text-white">Gestione Preventivi</h2>
       </div>
 
       {/* Lista preventivi */}
       <PreventivoList
         preventivi={preventivi}
         loading={loading.preventivi}
-        onEdit={handleEditPreventivo}
-        onStatusChange={handleStatusChange}
-        onDuplicate={handleDuplicatePreventivo}
+        onView={handleViewPreventivo}
         onDelete={handleDeletePreventivo}
-        filters={preventivoFilters}
-        onFilterChange={handleFilterChange}
-        onClearFilters={handleClearFilters}
       />
 
-      {/* Modale preventivo */}
-      {showPreventivoModal && (
+      {/* Modale dettaglio (sola lettura) */}
+      {showPreventivoModal && selectedPreventivo && (
         <PreventivoModal
           isOpen={showPreventivoModal}
           onClose={handleClosePreventivoModal}
-          onSave={handleSavePreventivo}
-          preventivo={selectedPreventivoDetailed}
-          loading={loading.selectedPreventivo}
+          preventivo={selectedPreventivo}
         />
       )}
     </div>

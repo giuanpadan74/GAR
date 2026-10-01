@@ -1,5 +1,5 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { Search, Filter, Download, Eye, EyeOff, RefreshCw, Menu, X, Plus, ChevronLeft, ChevronRight, Tag } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Search, Filter, Download, Upload, Eye, EyeOff, RefreshCw, Menu, X, Plus, ChevronLeft, ChevronRight } from 'lucide-react';
 import { Product, ProductFilters as ProductFiltersType, SortField, SortDirection } from '../../types/listino';
 import { ListinoService } from '../../services/listinoService';
 import { LoadingSpinner } from '../common/LoadingSpinner';
@@ -9,7 +9,7 @@ import ProductTable from './ProductTable';
 
 // Mantieni lazy solo per modali pesanti
 const ProductModal = React.lazy(() => import('./ProductModal').then(m => ({ default: m.ProductModal })));
-const ImportPromoModal = React.lazy(() => import('./ImportPromoModal').then(m => ({ default: m.ImportPromoModal })));
+const ImportDataModal = React.lazy(() => import('./ImportDataModal').then(m => ({ default: m.ImportDataModal })));
 const NewProductModal = React.lazy(() => import('./NewProductModal').then(m => ({ default: m.NewProductModal })));
 
 export const ProdottiTab: React.FC = () => {
@@ -47,14 +47,11 @@ export const ProdottiTab: React.FC = () => {
   const [showOldPriceColumns, setShowOldPriceColumns] = useState(false);
   const [showActionsColumn, setShowActionsColumn] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
-  const [showImportPromoModal, setShowImportPromoModal] = useState(false);
+  const [showImportModal, setShowImportModal] = useState(false);
   const [showNewProductModal, setShowNewProductModal] = useState(false);
   
   // Stato per modalità editing promo
   const [promoEditMode, setPromoEditMode] = useState(false);
-  
-  // Stato per filtro SOLO PROMO (solo admin)
-  const [promoOnlyFilter, setPromoOnlyFilter] = useState(false);
   
   // Stato per mobile
   const [showMobileActions, setShowMobileActions] = useState(false);
@@ -64,8 +61,6 @@ export const ProdottiTab: React.FC = () => {
   const [isRecalculating, setIsRecalculating] = useState(false);
   // Stato per indicare se i filtri stanno per essere applicati (debounce)
   const [isFiltersApplying, setIsFiltersApplying] = useState(false);
-  // Ref per evitare che useEffect su promoOnlyFilter parta al mount iniziale
-  const isFirstPromoOnlyToggle = useRef(true);
 
   // Caricamento iniziale disabilitato: mostriamo prodotti solo dopo ricerca/filtri
   // useEffect rimosso per evitare fetch automatico al mount
@@ -97,16 +92,6 @@ export const ProdottiTab: React.FC = () => {
     loadProducts({ page: 1 });
   }, [filters.brand, filters.apdesi, filters.xde40, filters.xde60, filters.aplib1]);
 
-  // Quando si attiva/disattiva SOLO PROMO, ricarica i prodotti
-  // Salta il primo render per evitare un fetch non richiesto al mount
-  useEffect(() => {
-    if (isFirstPromoOnlyToggle.current) {
-      isFirstPromoOnlyToggle.current = false;
-      return;
-    }
-    loadProducts({ page: 1 });
-  }, [promoOnlyFilter]);
-
   const loadProducts = async (opts?: { page?: number; overrideFilters?: ProductFiltersType }) => {
     try {
       setLoading(true);
@@ -119,7 +104,6 @@ export const ProdottiTab: React.FC = () => {
         sort_direction: sortDirection,
         page: currentPage,
         page_size: pageSize,
-        promo_only: promoOnlyFilter,
       };
       const { products: data, count } = await ListinoService.getProductsPaginated(filtersToSend);
       setProducts(data);
@@ -137,7 +121,7 @@ export const ProdottiTab: React.FC = () => {
     const search = (filters.search || '').trim();
     const hasActiveDropdown = [filters.brand, filters.apdesi, filters.xde40, filters.xde60, filters.aplib1]
       .some(v => (v || '').trim() !== '');
-    if (search.length === 0 && !hasActiveDropdown && !promoOnlyFilter) {
+    if (search.length === 0 && !hasActiveDropdown) {
       return; // niente da aggiornare senza filtri attivi
     }
     setIsRefreshing(true);
@@ -155,7 +139,7 @@ export const ProdottiTab: React.FC = () => {
     const search = (filters.search || '').trim();
     const hasActiveDropdown = [filters.brand, filters.apdesi, filters.xde40, filters.xde60, filters.aplib1]
       .some(v => (v || '').trim() !== '');
-    if (search.length > 0 || hasActiveDropdown || promoOnlyFilter) {
+    if (search.length > 0 || hasActiveDropdown) {
       loadProducts({ page: 1 });
     }
   };
@@ -247,13 +231,11 @@ export const ProdottiTab: React.FC = () => {
     const newShowMinimoColumns = !showMinimoColumns;
     setShowMinimoColumns(newShowMinimoColumns);
     
-    // Se attiviamo Minimo, disattiviamo Manuale, OldPrice e Modifica (inclusa promo)
+    // Se attiviamo Minimo, disattiviamo Manuale e Promo
     if (newShowMinimoColumns) {
       setShowManualColumns(false);
-      setShowOldPriceColumns(false);
       setShowPromoColumns(false);
       setPromoEditMode(false);
-      setShowActionsColumn(false);
       
       // Esegui il ricalcolo dei valori mancanti
       await recalculateMissingValues();
@@ -261,53 +243,42 @@ export const ProdottiTab: React.FC = () => {
   };
 
   const toggleManualColumns = () => {
-    const newShowManualColumns = !showManualColumns;
-    setShowManualColumns(newShowManualColumns);
-    // Se attiviamo Manuale, disattiviamo Minimo, OldPrice e Modifica (inclusa promo)
-    if (newShowManualColumns) {
+    setShowManualColumns(!showManualColumns);
+    // Se attiviamo Manuale, disattiviamo Minimo e Promo
+    if (!showManualColumns) {
       setShowMinimoColumns(false);
-      setShowOldPriceColumns(false);
       setShowPromoColumns(false);
       setPromoEditMode(false);
-      setShowActionsColumn(false);
     }
   };
 
-  // Toggle per il nuovo pulsante SOLO PROMO (solo admin)
-  const togglePromoOnlyFilter = () => {
-    setPromoOnlyFilter(!promoOnlyFilter);
+  const togglePromoColumns = () => {
+    const newShowPromoColumns = !showPromoColumns;
+    setShowPromoColumns(newShowPromoColumns);
+
+    if (newShowPromoColumns) {
+      setShowMinimoColumns(false);
+      setShowManualColumns(false);
+      setShowOldPriceColumns(false);
+      setPromoEditMode(true);
+    } else {
+      setPromoEditMode(false);
+    }
   };
 
   const toggleOldPriceColumns = () => {
     const newShowOldPriceColumns = !showOldPriceColumns;
     setShowOldPriceColumns(newShowOldPriceColumns);
-    // Se attiviamo OldPrice, disattiviamo Minimo, Manuale e Modifica (inclusa promo)
     if (newShowOldPriceColumns) {
       setShowMinimoColumns(false);
       setShowManualColumns(false);
       setShowPromoColumns(false);
       setPromoEditMode(false);
-      setShowActionsColumn(false);
     }
   };
 
   const toggleActionsColumn = () => {
-    const newShowActions = !showActionsColumn;
-    setShowActionsColumn(newShowActions);
-
-    // Integra anche le funzionalità del vecchio pulsante PROMO:
-    // se attivo Modifica → mostra colonne promo + editing promo
-    // se disattivo Modifica → nascondi colonne promo e spegni editing
-    if (newShowActions) {
-      setShowMinimoColumns(false);
-      setShowManualColumns(false);
-      setShowOldPriceColumns(false);
-      setShowPromoColumns(true);
-      setPromoEditMode(true);
-    } else {
-      setShowPromoColumns(false);
-      setPromoEditMode(false);
-    }
+    setShowActionsColumn(!showActionsColumn);
   };
 
   if (error) {
@@ -329,8 +300,7 @@ export const ProdottiTab: React.FC = () => {
 
   const totalPages = Math.max(1, Math.ceil(totalCount / pageSize));
   const hasActiveFilters = ((filters.search || '').trim().length > 0) ||
-    [filters.brand, filters.apdesi, filters.xde40, filters.xde60, filters.aplib1].some(v => (v || '').trim() !== '') ||
-    promoOnlyFilter;
+    [filters.brand, filters.apdesi, filters.xde40, filters.xde60, filters.aplib1].some(v => (v || '').trim() !== '');
 
   return (
     <div className="space-y-4 sm:space-y-6">
@@ -358,39 +328,36 @@ export const ProdottiTab: React.FC = () => {
           {showMobileActions && (
             <div className="space-y-3 border-t border-gray-100 pt-3">
 
-              {/* Pulsante SOLO PROMO - Solo ADMIN: filtra i prodotti in promo */}
-              {isAdmin() && (
-                <div className="grid grid-cols-1 gap-2">
-                  <button
-                    onClick={togglePromoOnlyFilter}
-                    className={`flex items-center justify-center space-x-2 px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
-                      promoOnlyFilter
-                        ? 'bg-fuchsia-200 text-fuchsia-800 shadow-sm'
-                        : 'bg-fuchsia-50 text-fuchsia-600 hover:bg-fuchsia-100'
-                    }`}
-                  >
-                    {promoOnlyFilter ? <EyeOff className="w-4 h-4" /> : <Filter className="w-4 h-4" />}
-                    <span>{promoOnlyFilter ? 'Mostra tutti' : 'SOLO PROMO'}</span>
-                  </button>
-                </div>
-              )}
+              {/* Pulsante PROMO - Disponibile per tutti i ruoli con permessi di scrittura */}
+              <div className="grid grid-cols-1 gap-2">
+                <button
+                  onClick={togglePromoColumns}
+                  className={`flex items-center justify-center space-x-2 px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
+                    showPromoColumns
+                      ? 'bg-pink-200 text-pink-800 shadow-sm'
+                      : 'bg-pink-50 text-pink-600 hover:bg-pink-100'
+                  }`}
+                >
+                  {showPromoColumns ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  <span>{showPromoColumns ? 'Nascondi' : 'PROMO'}</span>
+                </button>
 
-              {/* Pulsante Azioni/Modifica - Solo ADMIN: include anche colonne promo */}
-              {isAdmin() && (
-                <div className="grid grid-cols-1 gap-2">
-                  <button
-                    onClick={toggleActionsColumn}
-                    className={`flex items-center justify-center space-x-2 px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
-                      showActionsColumn
-                        ? 'bg-purple-200 text-purple-800 shadow-sm'
-                        : 'bg-purple-50 text-purple-600 hover:bg-purple-100'
-                    }`}
-                  >
-                    {showActionsColumn ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                    <span>{showActionsColumn ? 'Ferma modifica' : 'Modifica'}</span>
-                  </button>
-                </div>
-              )}
+              </div>
+
+              {/* Pulsante Azioni - Disponibile per tutti i ruoli con permessi di scrittura */}
+              <div className="grid grid-cols-1 gap-2">
+                <button
+                  onClick={toggleActionsColumn}
+                  className={`flex items-center justify-center space-x-2 px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
+                    showActionsColumn
+                      ? 'bg-purple-200 text-purple-800 shadow-sm'
+                      : 'bg-purple-50 text-purple-600 hover:bg-purple-100'
+                  }`}
+                >
+                  {showActionsColumn ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  <span>Modifica</span>
+                </button>
+              </div>
 
               {/* Pulsante Obsoleti - Solo ADMIN */}
               {isAdmin() && (
@@ -440,11 +407,11 @@ export const ProdottiTab: React.FC = () => {
                       <span>Nuovo</span>
                     </button>
                     <button
-                      onClick={() => setShowImportPromoModal(true)}
-                      className="flex items-center space-x-2 px-4 py-2 bg-fuchsia-100 text-fuchsia-700 rounded-lg hover:bg-fuchsia-200 transition-colors"
+                      onClick={() => setShowImportModal(true)}
+                      className="flex items-center space-x-2 px-4 py-2 bg-blue-100 text-blue-700 rounded-lg hover:bg-blue-200 transition-colors"
                     >
-                      <Tag className="w-4 h-4" />
-                      <span>Promo</span>
+                      <Upload className="w-4 h-4" />
+                      <span>Importa</span>
                     </button>
                   </>
                 )}
@@ -464,22 +431,21 @@ export const ProdottiTab: React.FC = () => {
             </div>
 
             <div className="flex items-center space-x-2">
-              {/* Pulsante SOLO PROMO - Solo ADMIN: filtra i prodotti in promo */}
-              {isAdmin() && (
-                <button
-                  onClick={togglePromoOnlyFilter}
-                  className={`flex items-center space-x-2 px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
-                    promoOnlyFilter
-                      ? 'bg-fuchsia-200 text-fuchsia-800 shadow-sm'
-                      : 'bg-fuchsia-50 text-fuchsia-600 hover:bg-fuchsia-100'
-                  }`}
-                >
-                  {promoOnlyFilter ? <EyeOff className="w-4 h-4" /> : <Filter className="w-4 h-4" />}
-                  <span>{promoOnlyFilter ? 'Mostra tutti' : 'SOLO PROMO'}</span>
-                </button>
-              )}
+              {/* Pulsante PROMO - Disponibile per tutti i ruoli con permessi di scrittura */}
+              <button
+                onClick={togglePromoColumns}
+                className={`flex items-center space-x-2 px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
+                  showPromoColumns
+                    ? 'bg-pink-200 text-pink-800 shadow-sm'
+                    : 'bg-pink-50 text-pink-600 hover:bg-pink-100'
+                }`}
+              >
+                {showPromoColumns ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                <span>{showPromoColumns ? 'Nascondi' : 'PROMO'}</span>
+              </button>
 
-              {/* Pulsante Modifica (Azioni) - Solo ADMIN: include anche colonne e editing promo */}
+
+              {/* Pulsante Azioni - Disponibile solo per ADMIN */}
               {isAdmin() && (
                 <>
                   <button
@@ -491,7 +457,7 @@ export const ProdottiTab: React.FC = () => {
                     }`}
                   >
                     {showActionsColumn ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                    <span>{showActionsColumn ? 'Ferma modifica' : 'Modifica'}</span>
+                    <span>Modifica</span>
                   </button>
 
                   <button
@@ -536,11 +502,11 @@ export const ProdottiTab: React.FC = () => {
                     <span>Nuovo prodotto</span>
                   </button>
                   <button
-                    onClick={() => setShowImportPromoModal(true)}
-                    className="flex items-center space-x-2 px-4 py-2 bg-fuchsia-100 text-fuchsia-700 rounded-lg hover:bg-fuchsia-200 transition-colors"
+                    onClick={() => setShowImportModal(true)}
+                    className="flex items-center space-x-2 px-4 py-2 bg-blue-100 text-blue-700 rounded-lg hover:bg-blue-200 transition-colors"
                   >
-                    <Tag className="w-4 h-4" />
-                    <span>Importa xls</span>
+                    <Upload className="w-4 h-4" />
+                    <span>Importa</span>
                   </button>
                 </>
               )}
@@ -627,12 +593,12 @@ export const ProdottiTab: React.FC = () => {
         </React.Suspense>
       )}
 
-      {/* Modal import promo */}
-      {showImportPromoModal && (
+      {/* Modal import */}
+      {showImportModal && (
         <React.Suspense fallback={<LoadingSpinner />}>
-          <ImportPromoModal
-            isOpen={showImportPromoModal}
-            onClose={() => setShowImportPromoModal(false)}
+          <ImportDataModal
+            isOpen={showImportModal}
+            onClose={() => setShowImportModal(false)}
             onImportComplete={() => loadProducts({ page: 1 })}
           />
         </React.Suspense>

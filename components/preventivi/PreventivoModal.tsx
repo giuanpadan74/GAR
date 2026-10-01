@@ -1,15 +1,15 @@
 import React from 'react';
 import { X, Calendar, User, Phone, Mail, FileText, Euro, Download, Edit } from 'lucide-react';
-import { Preventivo } from '../../types/listino';
+import { PreventivoDetailed } from '../../types/listino';
 import { format } from 'date-fns';
 import { it } from 'date-fns/locale';
 
 interface PreventivoModalProps {
   isOpen: boolean;
   onClose: () => void;
-  preventivo: Preventivo | null;
-  onEdit?: (preventivo: Preventivo) => void;
-  onExport?: (preventivo: Preventivo) => void;
+  preventivo: PreventivoDetailed | null;
+  onEdit?: (preventivo: PreventivoDetailed) => void;
+  onExport?: (preventivo: PreventivoDetailed) => void;
 }
 
 /**
@@ -47,15 +47,16 @@ export const PreventivoModal: React.FC<PreventivoModalProps> = ({
     );
   };
 
-  const calculateScadenza = () => {
-    const dataCreazione = new Date(preventivo.data_creazione);
-    const scadenza = new Date(dataCreazione);
-    scadenza.setDate(scadenza.getDate() + preventivo.validita_giorni);
-    return scadenza;
+  // `valid_until` è già la data di scadenza (colonna timestamptz), non un numero di giorni
+  const calculateScadenza = (): Date | null => {
+    if (!preventivo.valid_until) return null;
+    const scadenza = new Date(preventivo.valid_until);
+    return Number.isNaN(scadenza.getTime()) ? null : scadenza;
   };
 
   const isScaduto = () => {
-    return new Date() > calculateScadenza();
+    const scadenza = calculateScadenza();
+    return scadenza !== null && new Date() > scadenza;
   };
 
   return (
@@ -69,10 +70,10 @@ export const PreventivoModal: React.FC<PreventivoModalProps> = ({
                 Preventivo {preventivo.numero}
               </h2>
               <p className="text-sm text-gray-600">
-                Creato il {formatDate(preventivo.data_creazione)}
+                Creato il {formatDate(preventivo.created_at)}
               </p>
             </div>
-            {getStatusBadge(preventivo.stato)}
+            {getStatusBadge(preventivo.status)}
           </div>
           
           <div className="flex items-center space-x-2">
@@ -122,17 +123,17 @@ export const PreventivoModal: React.FC<PreventivoModalProps> = ({
                   </div>
                   <div className="flex justify-between">
                     <span className="text-gray-600">Data creazione:</span>
-                    <span>{formatDate(preventivo.data_creazione)}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-gray-600">Validità:</span>
-                    <span>{preventivo.validita_giorni} giorni</span>
+                    <span>{formatDate(preventivo.created_at)}</span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-gray-600">Scadenza:</span>
-                    <span className={isScaduto() ? 'text-red-600 font-medium' : ''}>
-                      {formatDate(calculateScadenza().toISOString())}
-                    </span>
+                    {calculateScadenza() ? (
+                      <span className={isScaduto() ? 'text-red-600 font-medium' : ''}>
+                        {formatDate(calculateScadenza()!.toISOString())}
+                      </span>
+                    ) : (
+                      <span className="text-gray-400">Non indicata</span>
+                    )}
                   </div>
                 </div>
               </div>
@@ -145,18 +146,18 @@ export const PreventivoModal: React.FC<PreventivoModalProps> = ({
                 <div className="space-y-2 text-sm">
                   <div className="flex items-center space-x-2">
                     <User className="w-4 h-4 text-gray-400" />
-                    <span className="font-medium">{preventivo.cliente_nome}</span>
+                    <span className="font-medium">{preventivo.client_name}</span>
                   </div>
-                  {preventivo.cliente_email && (
+                  {preventivo.client_email && (
                     <div className="flex items-center space-x-2">
                       <Mail className="w-4 h-4 text-gray-400" />
-                      <span>{preventivo.cliente_email}</span>
+                      <span>{preventivo.client_email}</span>
                     </div>
                   )}
-                  {preventivo.cliente_telefono && (
+                  {preventivo.client_phone && (
                     <div className="flex items-center space-x-2">
                       <Phone className="w-4 h-4 text-gray-400" />
-                      <span>{preventivo.cliente_telefono}</span>
+                      <span>{preventivo.client_phone}</span>
                     </div>
                   )}
                 </div>
@@ -166,10 +167,10 @@ export const PreventivoModal: React.FC<PreventivoModalProps> = ({
             {/* Righe preventivo */}
             <div>
               <h3 className="text-lg font-medium text-gray-900 mb-4">
-                Prodotti ({preventivo.righe?.length || 0})
+                Prodotti ({preventivo.righe.length})
               </h3>
-              
-              {preventivo.righe && preventivo.righe.length > 0 ? (
+
+              {preventivo.righe.length > 0 ? (
                 <div className="overflow-x-auto">
                   <table className="min-w-full divide-y divide-gray-200 border border-gray-200 rounded-lg">
                     <thead className="bg-gray-50">
@@ -197,24 +198,24 @@ export const PreventivoModal: React.FC<PreventivoModalProps> = ({
                           <td className="px-4 py-3">
                             <div>
                               <div className="text-sm font-medium text-gray-900">
-                                {riga.prodotto_codice}
+                                {riga.product?.apcpro ?? '-'}
                               </div>
                               <div className="text-sm text-gray-500">
-                                {riga.prodotto_nome}
+                                {riga.product?.descrizione ?? '-'}
                               </div>
                             </div>
                           </td>
                           <td className="px-4 py-3 text-right text-sm text-gray-900">
-                            {riga.quantita}
+                            {riga.quantity}
                           </td>
                           <td className="px-4 py-3 text-right text-sm text-gray-900">
-                            €{riga.prezzo_unitario.toFixed(2)}
+                            €{riga.unit_price.toFixed(2)}
                           </td>
                           <td className="px-4 py-3 text-right text-sm text-gray-900">
-                            {riga.sconto_percentuale > 0 ? `${riga.sconto_percentuale}%` : '-'}
+                            {riga.discount_percentage ? `${riga.discount_percentage}%` : '-'}
                           </td>
                           <td className="px-4 py-3 text-right text-sm font-medium text-gray-900">
-                            €{riga.totale_riga.toFixed(2)}
+                            €{riga.line_total.toFixed(2)}
                           </td>
                         </tr>
                       ))}
@@ -229,12 +230,12 @@ export const PreventivoModal: React.FC<PreventivoModalProps> = ({
             </div>
 
             {/* Note */}
-            {preventivo.note && (
+            {preventivo.notes && (
               <div>
                 <h3 className="text-lg font-medium text-gray-900 mb-3">Note</h3>
                 <div className="bg-gray-50 p-4 rounded-lg">
                   <p className="text-sm text-gray-700 whitespace-pre-wrap">
-                    {preventivo.note}
+                    {preventivo.notes}
                   </p>
                 </div>
               </div>
@@ -250,18 +251,18 @@ export const PreventivoModal: React.FC<PreventivoModalProps> = ({
               <div className="space-y-3">
                 <div className="flex justify-between text-sm">
                   <span className="text-gray-600">Subtotale:</span>
-                  <span className="font-medium">€{preventivo.subtotale.toFixed(2)}</span>
+                  <span className="font-medium">€{preventivo.subtotal.toFixed(2)}</span>
                 </div>
                 
                 <div className="flex justify-between text-sm">
                   <span className="text-gray-600">IVA (22%):</span>
-                  <span className="font-medium">€{preventivo.iva.toFixed(2)}</span>
+                  <span className="font-medium">€{preventivo.total_tax.toFixed(2)}</span>
                 </div>
                 
                 <div className="border-t border-blue-200 pt-3">
                   <div className="flex justify-between text-lg font-semibold">
                     <span className="text-gray-900">Totale:</span>
-                    <span className="text-blue-600">€{preventivo.totale.toFixed(2)}</span>
+                    <span className="text-blue-600">€{preventivo.total_amount.toFixed(2)}</span>
                   </div>
                 </div>
               </div>
@@ -276,9 +277,9 @@ export const PreventivoModal: React.FC<PreventivoModalProps> = ({
                     <h4 className="text-sm font-medium text-red-800">
                       Preventivo Scaduto
                     </h4>
-                    <p className="text-sm text-red-700">
-                      Questo preventivo è scaduto il {formatDate(calculateScadenza().toISOString())}
-                    </p>
+<p className="text-sm text-red-700">
+                        Questo preventivo è scaduto il {formatDate(calculateScadenza()!.toISOString())}
+                      </p>
                   </div>
                 </div>
               </div>
