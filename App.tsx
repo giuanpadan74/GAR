@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, Suspense } from 'react';
 import { Toaster } from 'sonner';
 import { useAuth } from './contexts/AuthContextSimple';
 import { AuthModal } from './components/auth';
@@ -8,16 +8,18 @@ import AgentsView from './components/AgentsView';
 import MapTerritoriesView from './components/MapTerritoriesView';
 import GeoView from './components/GeoView';
 import ListinoView from './components/ListinoView';
-import GestioneView from './components/GestioneView';
 import ScaleView from './src/pages/ScaleView';
 import CorrispondenzeView from './components/CorrispondenzeView';
+
+// Caricamento differito: i ~60 kB del tab si scaricano solo all'apertura
+const PreventiviTab = React.lazy(() => import('./components/preventivi/PreventiviTab'));
 
 enum View {
   Listino = 'Listino',
   Agents = 'Agenti di Commercio',
   Map = 'Mappa Territori',
   Corrispondenze = 'Corrispondenze',
-  Gestione = 'Gestione',
+  Preventivi = 'Preventivi',
   Geo = 'Gestione Geografica',
   Scale = 'Scale'
 }
@@ -37,8 +39,18 @@ export default function App() {
         return <MapTerritoriesView />;
       case View.Corrispondenze:
         return <CorrispondenzeView />;
-      case View.Gestione:
-        return <GestioneView />;
+      case View.Preventivi:
+        return (
+          <Suspense
+            fallback={
+              <div className="flex justify-center py-12">
+                <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-roloil-purple" />
+              </div>
+            }
+          >
+            <PreventiviTab />
+          </Suspense>
+        );
       case View.Geo:
         return <GeoView />;
       case View.Scale:

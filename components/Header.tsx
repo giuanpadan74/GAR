@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { BriefcaseIcon, ChartPieIcon, MapIcon, ClipboardListIcon, DatabaseIcon } from './Icons';
-import { Settings, Scale, Menu, X, Search, History } from 'lucide-react';
+import { Scale, Menu, X, Search, History, FileText } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContextSimple';
 import VersionsModal from '../src/components/VersionsModal.tsx';
 import VersionBadge from '../src/components/VersionBadge';
@@ -11,7 +11,7 @@ enum View {
   Agents = 'Agenti di Commercio',
   Map = 'Mappa Territori',
   Corrispondenze = 'Corrispondenze',
-  Gestione = 'Gestione',
+  Preventivi = 'Preventivi',
   Geo = 'Gestione Geografica',
   Scale = 'Scale'
 }
@@ -124,10 +124,10 @@ const Header: React.FC<HeaderProps> = ({ currentView, onViewChange }) => {
               />
             )}
             <NavItem
-              icon={<Settings className="w-5 h-5" />}
-              label={View.Gestione}
-              isActive={currentView === View.Gestione}
-              onClick={() => onViewChange(View.Gestione)}
+              icon={<FileText className="w-5 h-5" />}
+              label={View.Preventivi}
+              isActive={currentView === View.Preventivi}
+              onClick={() => onViewChange(View.Preventivi)}
             />
             {isAdmin && (
               <NavItem
@@ -240,10 +240,10 @@ const Header: React.FC<HeaderProps> = ({ currentView, onViewChange }) => {
                 />
               )}
               <MobileNavItem
-                icon={<Settings className="w-5 h-5" />}
-                label={View.Gestione}
-                isActive={currentView === View.Gestione}
-                onClick={() => { onViewChange(View.Gestione); setMobileMenuOpen(false); }}
+                icon={<FileText className="w-5 h-5" />}
+                label={View.Preventivi}
+                isActive={currentView === View.Preventivi}
+                onClick={() => { onViewChange(View.Preventivi); setMobileMenuOpen(false); }}
               />
               {isAdmin && (
                 <MobileNavItem

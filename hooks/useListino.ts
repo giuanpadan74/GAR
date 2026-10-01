@@ -14,9 +14,7 @@ import type {
   ProductFilters,
   PreventivoFilters,
   ProductCategory,
-  PreventiveStatus,
-  ListinoStats,
-  PreventivoStats
+  PreventiveStatus
 } from '../types/listino';
 
 interface UseListinoState {
@@ -41,18 +39,11 @@ interface UseListinoState {
     discountScales: boolean;
     selectedProduct: boolean;
     selectedPreventivo: boolean;
-    stats: boolean;
     filtersApplying?: boolean;
   };
   
   // Errori
   error: string | null;
-  
-  // Statistiche
-  stats: {
-    listino: ListinoStats | null;
-    preventivi: PreventivoStats | null;
-  };
 }
 
 interface UseListinoActions {
@@ -80,9 +71,6 @@ interface UseListinoActions {
   // Scale di sconto
   loadDiscountScales: () => Promise<void>;
   
-  // Statistiche
-  loadStats: (agentId?: string) => Promise<void>;
-  
   // Utilità
   clearError: () => void;
   refresh: () => Promise<void>;
@@ -106,16 +94,10 @@ const initialState: UseListinoState = {
     discountScales: false,
     selectedProduct: false,
     selectedPreventivo: false,
-    stats: false,
     filtersApplying: false,
   },
   
   error: null,
-  
-  stats: {
-    listino: null,
-    preventivi: null,
-  },
 };
 
 /**
@@ -402,32 +384,6 @@ export function useListino(): UseListinoState & UseListinoActions {
 
   // === STATISTICHE ===
 
-  const loadStats = useCallback(async (agentId?: string) => {
-    try {
-      setState(prev => ({ 
-        ...prev,
-        loading: { ...prev.loading, stats: true },
-        error: null 
-      }));
-      
-      const [listinoStats, preventiviStats] = await Promise.all([
-        ListinoService.getListinoStats(),
-        PreventiviService.getPreventivoStats(agentId)
-      ]);
-      
-      setState(prev => ({ 
-        ...prev,
-        stats: {
-          listino: listinoStats,
-          preventivi: preventiviStats
-        },
-        loading: { ...prev.loading, stats: false }
-      }));
-    } catch (error) {
-      handleError(error, 'stats');
-    }
-  }, [handleError]);
-
   // === UTILITÀ ===
 
   const clearError = useCallback(() => {
@@ -518,8 +474,6 @@ export function useListino(): UseListinoState & UseListinoActions {
     deletePreventivo,
     
     loadDiscountScales,
-    
-    loadStats,
     
     clearError,
     refresh,

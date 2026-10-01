@@ -178,7 +178,7 @@ const PreventiviTab: React.FC = () => {
       <div className="flex justify-between items-center">
         <div className="flex items-center space-x-2">
           <FileText className="h-6 w-6 text-roloil-purple" />
-          <h2 className="text-2xl font-bold text-white">Gestione Preventivi</h2>
+          <h2 className="text-2xl font-bold text-white">Preventivi</h2>
         </div>
         <button
           onClick={handleCreate}
