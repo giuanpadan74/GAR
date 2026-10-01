@@ -688,14 +688,6 @@ export class ListinoService {
   }
 
   /**
-   * Recupera tutte le scale di sconto
-   */
-  // Delega a getScales(): la tabella `discount_scales` non esiste in DB
-  static async getDiscountScales(): Promise<DiscountScale[]> {
-    return this.getScales();
-  }
-
-  /**
    * Recupera le scale di un tipo specifico
    */
   static async getDiscountScaleByType(scaleType: DiscountScaleType): Promise<DiscountScale | null> {

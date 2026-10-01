@@ -8,7 +8,6 @@ import { ListinoService } from '../services/listinoService';
 import { PreventiviService } from '../services/preventiviService';
 import type {
   Product,
-  DiscountScale,
   Preventivo,
   PreventivoDetailed,
   ProductFilters,
@@ -29,14 +28,10 @@ interface UseListinoState {
   selectedPreventivo: PreventivoDetailed | null;
   preventivoFilters: PreventivoFilters;
   
-  // Scale di sconto
-  discountScales: DiscountScale[];
-  
   // Stati di caricamento
   loading: {
     products: boolean;
     preventivi: boolean;
-    discountScales: boolean;
     selectedProduct: boolean;
     selectedPreventivo: boolean;
     filtersApplying?: boolean;
@@ -68,9 +63,6 @@ interface UseListinoActions {
   duplicatePreventivo: (id: string) => Promise<void>;
   deletePreventivo: (id: string) => Promise<void>;
   
-  // Scale di sconto
-  loadDiscountScales: () => Promise<void>;
-  
   // Utilità
   clearError: () => void;
   refresh: () => Promise<void>;
@@ -86,12 +78,9 @@ const initialState: UseListinoState = {
   selectedPreventivo: null,
   preventivoFilters: {},
   
-  discountScales: [],
-  
   loading: {
     products: false,
     preventivi: false,
-    discountScales: false,
     selectedProduct: false,
     selectedPreventivo: false,
     filtersApplying: false,
@@ -361,27 +350,6 @@ export function useListino(): UseListinoState & UseListinoActions {
     }
   }, [state.preventivoFilters, state.selectedPreventivo, loadPreventivi, clearSelectedPreventivo, handleError]);
 
-  // === SCALE DI SCONTO ===
-
-  const loadDiscountScales = useCallback(async () => {
-    try {
-      setState(prev => ({ 
-        ...prev,
-        loading: { ...prev.loading, discountScales: true },
-        error: null 
-      }));
-      
-      const discountScales = await ListinoService.getDiscountScales();
-      setState(prev => ({ 
-        ...prev,
-        discountScales,
-        loading: { ...prev.loading, discountScales: false }
-      }));
-    } catch (error) {
-      handleError(error, 'discountScales');
-    }
-  }, [handleError]);
-
   // === STATISTICHE ===
 
   // === UTILITÀ ===
@@ -393,10 +361,9 @@ export function useListino(): UseListinoState & UseListinoActions {
   const refresh = useCallback(async () => {
     await Promise.all([
       loadProducts(),
-      loadPreventivi(),
-      loadDiscountScales()
+      loadPreventivi()
     ]);
-  }, [loadProducts, loadPreventivi, loadDiscountScales]);
+  }, [loadProducts, loadPreventivi]);
 
   // === COMPUTED VALUES ===
 
@@ -436,8 +403,7 @@ export function useListino(): UseListinoState & UseListinoActions {
       try {
         await Promise.all([
           loadProducts(),
-          loadPreventivi(),
-          loadDiscountScales()
+          loadPreventivi()
         ]);
       } catch (error) {
         console.error('Errore durante il caricamento iniziale dei dati:', error);
@@ -445,7 +411,7 @@ export function useListino(): UseListinoState & UseListinoActions {
     };
 
     initializeData();
-  }, [loadProducts, loadPreventivi, loadDiscountScales]);
+  }, [loadProducts, loadPreventivi]);
 
   return {
     // State
@@ -472,8 +438,6 @@ export function useListino(): UseListinoState & UseListinoActions {
     updatePreventivoStatus,
     duplicatePreventivo,
     deletePreventivo,
-    
-    loadDiscountScales,
     
     clearError,
     refresh,

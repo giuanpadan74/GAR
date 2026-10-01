@@ -85,8 +85,8 @@ export interface Product {
   updated_at: string;
 }
 
-// La tabella `discount_scales` non esiste: le scale stanno tutte in `scales`.
-// ListinoService.getDiscountScales() e getScales() restituiscono la stessa struttura.
+// La tabella `discount_scales` non esiste: le scale stanno tutte in `scales`,
+// che ListinoService.getScales() restituisce già in questa forma
 export type DiscountScale = Scale;
 
 // Allineato alla tabella `preventivi`
