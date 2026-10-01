@@ -172,7 +172,9 @@ export interface PreventivoFilters {
 }
 
 // Riga in fase di modifica dal form: i totali di riga sono calcolati dal servizio
-export type PreventivoRigaInput = Omit<PreventivoRiga, 'id' | 'line_subtotal' | 'line_discount' | 'line_total' | 'created_at' | 'updated_at'>;
+// Riga pronta per l'inserimento dal form: il preventivo_id lo aggiunge il servizio,
+// i totali di riga li calcola lui
+export type PreventivoRigaInput = Omit<PreventivoRiga, 'id' | 'preventivo_id' | 'line_subtotal' | 'line_discount' | 'line_total' | 'created_at' | 'updated_at'>;
 
 
 
@@ -245,8 +247,10 @@ export type CreatePreventivoInput = Omit<
   Preventivo,
   'id' | 'numero' | 'created_at' | 'updated_at' | 'sent_at' | 'subtotal' | 'total_discount' | 'total_tax' | 'total_amount'
 >;
-// I totali di riga (line_subtotal/line_discount/line_total) sono calcolati dal servizio
-export type CreatePreventivoRigaInput = PreventivoRigaInput;
+// Inserimento riga con preventivo_id noto (metodi addRiga/updateRiga del servizio).
+// I totali di riga sono calcolati dal servizio.
+export type CreatePreventivoRigaInput = PreventivoRigaInput & { preventivo_id: string };
+export type UpdatePreventivoInput = Database['public']['Tables']['preventivi']['Update'];
 
 // Tipi di compatibilità per la transizione
 export interface LegacyProduct {

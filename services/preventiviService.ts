@@ -13,6 +13,8 @@ import type {
   PreventivoRigaDetailed,
   CreatePreventivoInput,
   CreatePreventivoRigaInput,
+  PreventivoRigaInput,
+  UpdatePreventivoInput,
   PreventivoFilters,
   Product,
   ExportOptions,
@@ -199,6 +201,109 @@ export class PreventiviService {
       console.error('Errore nel recupero preventivi:', error);
       throw new Error('Impossibile recuperare i preventivi');
     }
+  }
+
+  /**
+   * Crea un preventivo completo: intestazione + righe + ricalcolo dei totali.
+   * Non esiste una transazione multi-riga via PostgREST: se l'inserimento delle
+   * righe fallisce, la testata viene rimossa per non lasciare preventivi vuoti.
+   */
+  static async createPreventivoCompleto(
+    preventivoData: CreatePreventivoInput,
+    righe: PreventivoRigaInput[]
+  ): Promise<PreventivoDetailed> {
+    const preventivo = await this.createPreventivo(preventivoData);
+
+    if (righe.length > 0) {
+      const insertRows = righe.map(riga => ({
+        preventivo_id: preventivo.id,
+        ...this.calculateRigaTotals(riga.quantity, riga.unit_price, riga.discount_percentage ?? 0),
+        product_id: riga.product_id,
+        quantity: riga.quantity,
+        unit_price: riga.unit_price,
+        discount_percentage: riga.discount_percentage ?? 0,
+        notes: riga.notes ?? null
+      }));
+
+      const { error } = await supabase.from('preventivi_items').insert(insertRows);
+      if (error) {
+        await supabase.from('preventivi').delete().eq('id', preventivo.id);
+        throw error;
+      }
+
+      await this.recalculatePreventivoTotals(preventivo.id);
+    }
+
+    const completo = await this.getPreventivoById(preventivo.id);
+    if (!completo) throw new Error("Impossibile rileggere il preventivo appena creato");
+    return completo;
+  }
+
+  /**
+   * Aggiorna un preventivo sostituendo l'insieme delle righe.
+   * Le righe esistenti vengono eliminate e reinserite: il form gestisce
+   * l'insieme completo, quindi non serve un diff riga per riga.
+   */
+  static async updatePreventivoCompleto(
+    id: string,
+    preventivoData: Partial<CreatePreventivoInput>,
+    righe: PreventivoRigaInput[]
+  ): Promise<PreventivoDetailed> {
+    const { error: updateError } = await supabase
+      .from('preventivi')
+      .update(preventivoData)
+      .eq('id', id);
+    if (updateError) throw updateError;
+
+    const { error: deleteError } = await supabase.from('preventivi_items').delete().eq('preventivo_id', id);
+    if (deleteError) throw deleteError;
+
+    if (righe.length > 0) {
+      const insertRows = righe.map(riga => ({
+        preventivo_id: id,
+        ...this.calculateRigaTotals(riga.quantity, riga.unit_price, riga.discount_percentage ?? 0),
+        product_id: riga.product_id,
+        quantity: riga.quantity,
+        unit_price: riga.unit_price,
+        discount_percentage: riga.discount_percentage ?? 0,
+        notes: riga.notes ?? null
+      }));
+
+      const { error } = await supabase.from('preventivi_items').insert(insertRows);
+      if (error) throw error;
+    }
+
+    await this.recalculatePreventivoTotals(id);
+
+    const completo = await this.getPreventivoById(id);
+    if (!completo) throw new Error("Impossibile rileggere il preventivo aggiornato");
+    return completo;
+  }
+
+  /**
+   * Cambia lo stato del preventivo.
+   * Passando a INVIATO registra sent_at; da lì in poi lo stato non torna
+   * automaticamente a bozza perché l'iter è lineare.
+   */
+  static async changeStatus(
+    id: string,
+    status: PreventiveStatus,
+    options?: { validUntil?: string | null }
+  ): Promise<PreventivoDetailed> {
+    const update: UpdatePreventivoInput = { status };
+    if (status === PreventiveStatus.INVIATO) {
+      update.sent_at = new Date().toISOString();
+    }
+    if (options?.validUntil !== undefined) {
+      update.valid_until = options.validUntil;
+    }
+
+    const { error } = await supabase.from('preventivi').update(update).eq('id', id);
+    if (error) throw error;
+
+    const completo = await this.getPreventivoById(id);
+    if (!completo) throw new Error("Impossibile rileggere il preventivo");
+    return completo;
   }
 
   /**

@@ -10,6 +10,7 @@ interface PreventivoModalProps {
   preventivo: PreventivoDetailed | null;
   onEdit?: (preventivo: PreventivoDetailed) => void;
   onExport?: (preventivo: PreventivoDetailed) => void;
+  statusActions?: React.ReactNode;
 }
 
 /**
@@ -21,7 +22,8 @@ export const PreventivoModal: React.FC<PreventivoModalProps> = ({
   onClose,
   preventivo,
   onEdit,
-  onExport
+  onExport,
+  statusActions
 }) => {
   if (!isOpen || !preventivo) return null;
 
@@ -284,6 +286,21 @@ export const PreventivoModal: React.FC<PreventivoModalProps> = ({
                 </div>
               </div>
             )}
+
+            {/* Azioni stato */}
+            {statusActions && (
+              <div className="border-t border-gray-200 pt-4">{statusActions}</div>
+            )}
+
+            {/* Chiusura */}
+            <div className="flex justify-end border-t border-gray-200 pt-4">
+              <button
+                onClick={onClose}
+                className="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors"
+              >
+                Chiudi
+              </button>
+            </div>
           </div>
         </div>
       </div>
