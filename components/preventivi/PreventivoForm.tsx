@@ -245,10 +245,10 @@ export const PreventivoForm: React.FC<PreventivoFormProps> = ({
   return (
     <div className="bg-white rounded-lg shadow-sm border border-gray-200">
       <div className="p-6 border-b border-gray-200 flex justify-between items-center">
-        <h2 className="text-xl font-semibold text-gray-900">
+        <h2 className="text-xl font-semibold text-black">
           {isEdit ? `Modifica Preventivo ${preventivo.numero}` : 'Nuovo Preventivo'}
         </h2>
-        <button onClick={onCancel} className="text-gray-400 hover:text-gray-600 transition-colors">
+        <button onClick={onCancel} className="text-black hover:text-black transition-colors">
           <X className="w-6 h-6" />
         </button>
       </div>
@@ -257,7 +257,7 @@ export const PreventivoForm: React.FC<PreventivoFormProps> = ({
         {/* Dati generali */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div className="md:col-span-2">
-            <label className="block text-sm font-medium text-gray-700 mb-2">Cliente *</label>
+            <label className="block text-sm font-medium text-black mb-2">Cliente *</label>
             <input
               type="text"
               value={clientName}
@@ -271,7 +271,7 @@ export const PreventivoForm: React.FC<PreventivoFormProps> = ({
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">Agente *</label>
+            <label className="block text-sm font-medium text-black mb-2">Agente *</label>
             <select
               value={agentId}
               onChange={(e) => setAgentId(e.target.value)}
@@ -292,7 +292,7 @@ export const PreventivoForm: React.FC<PreventivoFormProps> = ({
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">Valido fino al</label>
+            <label className="block text-sm font-medium text-black mb-2">Valido fino al</label>
             <input
               type="date"
               value={validUntil}
@@ -301,7 +301,7 @@ export const PreventivoForm: React.FC<PreventivoFormProps> = ({
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">Note</label>
+            <label className="block text-sm font-medium text-black mb-2">Note</label>
             <input
               type="text"
               value={notes}
@@ -314,9 +314,9 @@ export const PreventivoForm: React.FC<PreventivoFormProps> = ({
 
         {/* Ricerca prodotto */}
         <div className="relative">
-          <label className="block text-sm font-medium text-gray-700 mb-2">Aggiungi prodotto</label>
+          <label className="block text-sm font-medium text-black mb-2">Aggiungi prodotto</label>
           <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4" />
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-black w-4 h-4" />
             <input
               type="text"
               value={searchTerm}
@@ -326,7 +326,7 @@ export const PreventivoForm: React.FC<PreventivoFormProps> = ({
               placeholder="Cerca per codice o nome (min. 2 caratteri)"
             />
             {searching && (
-              <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 animate-spin text-gray-400" />
+              <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 animate-spin text-black" />
             )}
           </div>
           {showResults && results.length > 0 && (
@@ -339,10 +339,10 @@ export const PreventivoForm: React.FC<PreventivoFormProps> = ({
                   className="w-full px-4 py-2 text-left hover:bg-gray-50 border-b border-gray-100 last:border-b-0 flex justify-between items-center"
                 >
                   <span>
-                    <span className="font-medium text-gray-900">{p.apcpro}</span>
-                    <span className="text-sm text-gray-600"> {p.descrizione}</span>
+                    <span className="font-medium text-black">{p.apcpro}</span>
+                    <span className="text-sm text-black"> {p.descrizione}</span>
                   </span>
-                  <span className="text-sm text-gray-700">{euro(p.apprli ?? 0)}</span>
+                  <span className="text-sm text-black">{euro(p.apprli ?? 0)}</span>
                 </button>
               ))}
             </div>
@@ -356,14 +356,14 @@ export const PreventivoForm: React.FC<PreventivoFormProps> = ({
             <table className="min-w-full text-sm">
               <thead className="bg-gray-50">
                 <tr>
-                  <th className="px-3 py-2 text-left font-medium text-gray-700">Prodotto</th>
-                  <th className="px-3 py-2 text-center font-medium text-gray-700 w-24">Qtà</th>
-                  <th className="px-3 py-2 text-right font-medium text-gray-700 w-32">Prezzo</th>
-                  <th className="px-3 py-2 text-right font-medium text-gray-700 w-24" title="Provvigione: informativa per l'agente, non compare nel preventivo">
+                  <th className="px-3 py-2 text-left font-medium text-black">Prodotto</th>
+                  <th className="px-3 py-2 text-center font-medium text-black w-24">Qtà</th>
+                  <th className="px-3 py-2 text-right font-medium text-black w-32">Prezzo</th>
+                  <th className="px-3 py-2 text-right font-medium text-black w-24" title="Provvigione: informativa per l'agente, non compare nel preventivo">
                     Provv. *
                   </th>
-                  <th className="px-3 py-2 text-center font-medium text-gray-700 w-20">Sconto %</th>
-                  <th className="px-3 py-2 text-right font-medium text-gray-700 w-28">Totale</th>
+                  <th className="px-3 py-2 text-center font-medium text-black w-20">Sconto %</th>
+                  <th className="px-3 py-2 text-right font-medium text-black w-28">Totale</th>
                   <th className="w-10"></th>
                 </tr>
               </thead>
@@ -371,8 +371,8 @@ export const PreventivoForm: React.FC<PreventivoFormProps> = ({
                 {righe.map((r) => (
                   <tr key={r.key} className="border-t border-gray-200">
                     <td className="px-3 py-2">
-                      <div className="font-medium text-gray-900">{r.apcpro}</div>
-                      <div className="text-xs text-gray-500">{r.descrizione}</div>
+                      <div className="font-medium text-black">{r.apcpro}</div>
+                      <div className="text-xs text-black">{r.descrizione}</div>
                     </td>
                     <td className="px-3 py-2">
                       <input
@@ -383,7 +383,7 @@ export const PreventivoForm: React.FC<PreventivoFormProps> = ({
                         onChange={(e) => updateRiga(r.key, { quantita: Math.max(1, parseInt(e.target.value) || 1) })}
                         className="w-full px-2 py-1 border border-gray-300 rounded text-center"
                       />
-                      <div className="text-xs text-gray-500 text-center mt-0.5">{r.apunmi}</div>
+                      <div className="text-xs text-black text-center mt-0.5">{r.apunmi}</div>
                     </td>
                     <td className="px-3 py-2 text-right">
                       <select
@@ -398,7 +398,7 @@ export const PreventivoForm: React.FC<PreventivoFormProps> = ({
                         {r.minimo !== r.listino && <option value="minimo">Minimo {euro(r.minimo)}</option>}
                       </select>
                     </td>
-                    <td className="px-3 py-2 text-right text-xs text-gray-500">{euro(r.provvigione)}</td>
+                    <td className="px-3 py-2 text-right text-xs text-black">{euro(r.provvigione)}</td>
                     <td className="px-3 py-2">
                       <input
                         type="number"
@@ -410,7 +410,7 @@ export const PreventivoForm: React.FC<PreventivoFormProps> = ({
                         className="w-full px-2 py-1 border border-gray-300 rounded text-center"
                       />
                     </td>
-                    <td className="px-3 py-2 text-right font-medium text-gray-900">
+                    <td className="px-3 py-2 text-right font-medium text-black">
                       {euro(round2(r.quantita * r.prezzo * (1 - r.sconto / 100)))}
                     </td>
                     <td className="px-3 py-2">
@@ -426,7 +426,7 @@ export const PreventivoForm: React.FC<PreventivoFormProps> = ({
                 ))}
               </tbody>
             </table>
-            <p className="px-3 py-1 text-xs text-gray-400">
+            <p className="px-3 py-1 text-xs text-black">
               * Provvigione: informativa per l'agente, non viene riportata sul preventivo
             </p>
           </div>
@@ -461,7 +461,7 @@ export const PreventivoForm: React.FC<PreventivoFormProps> = ({
           <button
             type="button"
             onClick={onCancel}
-            className="px-4 py-2 text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200 transition-colors"
+            className="px-4 py-2 text-black bg-gray-100 rounded-md hover:bg-gray-200 transition-colors"
             disabled={loading}
           >
             Annulla
@@ -470,7 +470,7 @@ export const PreventivoForm: React.FC<PreventivoFormProps> = ({
             type="button"
             onClick={handlePrint}
             disabled={loading || righe.length === 0}
-            className="inline-flex items-center space-x-2 px-4 py-2 bg-gray-100 text-gray-700 rounded-md hover:bg-gray-200 transition-colors disabled:opacity-50"
+            className="inline-flex items-center space-x-2 px-4 py-2 bg-gray-100 text-black rounded-md hover:bg-gray-200 transition-colors disabled:opacity-50"
           >
             <Printer className="w-4 h-4" />
             <span>Stampa PDF</span>

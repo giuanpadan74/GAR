@@ -42,7 +42,7 @@ export const StatusActions: React.FC<StatusActionsProps> = ({ preventivo, onChan
             type="button"
             disabled={busy}
             onClick={() => run(PreventiveStatus.SCADUTO)}
-            className={`${btn} bg-gray-200 text-gray-700 hover:bg-gray-300`}
+            className={`${btn} bg-gray-200 text-black hover:bg-gray-300`}
           >
             <Clock className="h-4 w-4" /> Scaduto
           </button>
@@ -73,7 +73,7 @@ export const StatusActions: React.FC<StatusActionsProps> = ({ preventivo, onChan
       {(preventivo.status === PreventiveStatus.ACCETTATO ||
         preventivo.status === PreventiveStatus.RIFIUTATO ||
         preventivo.status === PreventiveStatus.SCADUTO) && (
-        <span className="text-sm text-gray-500">Iter concluso</span>
+        <span className="text-sm text-black">Iter concluso</span>
       )}
     </div>
   );

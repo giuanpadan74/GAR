@@ -72,7 +72,7 @@ export const PreventivoList: React.FC<PreventivoListProps> = ({
 
   const getStatusBadge = (stato: string) => {
     const statusConfig = {
-      bozza: { color: 'bg-gray-100 text-gray-800', label: 'Bozza' },
+      bozza: { color: 'bg-gray-100 text-black', label: 'Bozza' },
       inviato: { color: 'bg-blue-100 text-blue-800', label: 'Inviato' },
       accettato: { color: 'bg-green-100 text-green-800', label: 'Accettato' },
       rifiutato: { color: 'bg-red-100 text-red-800', label: 'Rifiutato' },
@@ -125,7 +125,7 @@ export const PreventivoList: React.FC<PreventivoListProps> = ({
         <div className="flex flex-col md:flex-row md:items-center md:justify-between space-y-3 md:space-y-0">
           {/* Ricerca */}
           <div className="relative flex-1 max-w-md">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-black w-4 h-4" />
             <input
               type="text"
               placeholder="Cerca per numero o cliente..."
@@ -140,14 +140,14 @@ export const PreventivoList: React.FC<PreventivoListProps> = ({
             <button
               onClick={() => setShowFilters(!showFilters)}
               className={`inline-flex items-center space-x-2 px-3 py-2 rounded-md transition-colors ${
-                showFilters ? 'bg-blue-100 text-blue-700' : 'text-gray-600 hover:text-gray-900'
+                showFilters ? 'bg-blue-100 text-blue-700' : 'text-black hover:text-black'
               }`}
             >
               <Filter className="w-4 h-4" />
               <span>Filtri</span>
             </button>
 
-            <div className="text-sm text-gray-600">
+            <div className="text-sm text-black">
               {filteredPreventivi.length} di {preventivi.length} preventivi
             </div>
           </div>
@@ -158,7 +158,7 @@ export const PreventivoList: React.FC<PreventivoListProps> = ({
           <div className="mt-4 pt-4 border-t border-gray-200">
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label className="block text-sm font-medium text-black mb-1">
                   Stato
                 </label>
                 <select
@@ -176,7 +176,7 @@ export const PreventivoList: React.FC<PreventivoListProps> = ({
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label className="block text-sm font-medium text-black mb-1">
                   Ordina per
                 </label>
                 <select
@@ -193,7 +193,7 @@ export const PreventivoList: React.FC<PreventivoListProps> = ({
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label className="block text-sm font-medium text-black mb-1">
                   Direzione
                 </label>
                 <select
@@ -213,11 +213,11 @@ export const PreventivoList: React.FC<PreventivoListProps> = ({
       {/* Lista preventivi */}
       {filteredPreventivi.length === 0 ? (
         <div className="text-center py-12 bg-white rounded-lg border border-gray-200">
-          <Calendar className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-          <h3 className="text-lg font-medium text-gray-900 mb-2">
+          <Calendar className="w-12 h-12 text-black mx-auto mb-4" />
+          <h3 className="text-lg font-medium text-black mb-2">
             Nessun preventivo trovato
           </h3>
-          <p className="text-gray-500">
+          <p className="text-black">
             {searchTerm || statusFilter !== 'all' 
               ? 'Prova a modificare i filtri di ricerca'
               : 'Non ci sono preventivi da mostrare'
@@ -234,15 +234,15 @@ export const PreventivoList: React.FC<PreventivoListProps> = ({
               <div className="flex justify-between items-start mb-3">
                 <div className="space-y-1">
                   <div className="flex items-center space-x-3">
-                    <h3 className="text-lg font-semibold text-gray-900">
+                    <h3 className="text-lg font-semibold text-black">
                       {preventivo.numero}
                     </h3>
                     {getStatusBadge(preventivo.status)}
                   </div>
-                  <p className="text-gray-600">
+                  <p className="text-black">
                     Cliente: {preventivo.client_name}
                   </p>
-                  <div className="flex items-center space-x-4 text-sm text-gray-500">
+                  <div className="flex items-center space-x-4 text-sm text-black">
                     <span className="flex items-center space-x-1">
                       <Calendar className="w-4 h-4" />
                       <span>{formatDate(preventivo.created_at)}</span>
@@ -259,7 +259,7 @@ export const PreventivoList: React.FC<PreventivoListProps> = ({
                   {onView && (
                     <button
                       onClick={() => onView(preventivo)}
-                      className="p-2 text-gray-600 hover:text-blue-600 hover:bg-blue-50 rounded-md transition-colors"
+                      className="p-2 text-black hover:text-blue-600 hover:bg-blue-50 rounded-md transition-colors"
                       title="Visualizza"
                     >
                       <Eye className="w-4 h-4" />
@@ -269,7 +269,7 @@ export const PreventivoList: React.FC<PreventivoListProps> = ({
                   {onEdit && (
                     <button
                       onClick={() => onEdit(preventivo)}
-                      className="p-2 text-gray-600 hover:text-green-600 hover:bg-green-50 rounded-md transition-colors"
+                      className="p-2 text-black hover:text-green-600 hover:bg-green-50 rounded-md transition-colors"
                       title="Modifica"
                     >
                       <Edit className="w-4 h-4" />
@@ -279,7 +279,7 @@ export const PreventivoList: React.FC<PreventivoListProps> = ({
                   {onExport && (
                     <button
                       onClick={() => onExport(preventivo)}
-                      className="p-2 text-gray-600 hover:text-purple-600 hover:bg-purple-50 rounded-md transition-colors"
+                      className="p-2 text-black hover:text-purple-600 hover:bg-purple-50 rounded-md transition-colors"
                       title="Esporta PDF"
                     >
                       <Download className="w-4 h-4" />
@@ -289,7 +289,7 @@ export const PreventivoList: React.FC<PreventivoListProps> = ({
                   {onDelete && preventivo.status === 'bozza' && (
                     <button
                       onClick={() => onDelete(preventivo)}
-                      className="p-2 text-gray-600 hover:text-red-600 hover:bg-red-50 rounded-md transition-colors"
+                      className="p-2 text-black hover:text-red-600 hover:bg-red-50 rounded-md transition-colors"
                       title="Elimina"
                     >
                       <Trash2 className="w-4 h-4" />
@@ -301,7 +301,7 @@ export const PreventivoList: React.FC<PreventivoListProps> = ({
               {/* Info aggiuntive */}
               <div className="flex justify-between items-center text-sm">
                 {preventivo.notes && (
-                  <div className="text-gray-500 max-w-xs truncate">
+                  <div className="text-black max-w-xs truncate">
                     Note: {preventivo.notes}
                   </div>
                 )}
