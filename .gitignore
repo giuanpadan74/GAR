@@ -1,0 +1,68 @@
+# Dipendenze
+node_modules/
+jspm_packages/
+
+# Build output
+dist/
+build/
+.vercel/
+*.tsbuildinfo
+
+# Segreti e variabili d'ambiente
+.env
+.env.local
+.env.*.local
+.env.production
+!.env.example
+
+# Certificati e chiavi SSL
+ssl/*.pem
+ssl/*.key
+ssl/*.crt
+ssl/live/
+.certbot/
+
+# Backup
+*.backup
+*.bak
+
+# Log
+*.log
+logs/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Cache
+.cache/
+.parcel-cache/
+.npm/
+.eslintcache
+coverage/
+.nyc_output/
+
+# File di sistema
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+*~
+
+# Editor
+.idea/
+.vscode/
+
+# Runtime
+pids/
+*.pid
+*.seed
+*.pid.lock
+tmp/
+temp/
+
+# Supabase locale
+supabase/.temp/
+
+# Pacchetti
+*.tgz
+.yarn-integrity
