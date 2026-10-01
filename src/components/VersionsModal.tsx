@@ -14,6 +14,7 @@ type VersionRow = {
   version_number: string;
   description: string;
   created_at: string | null;
+  is_current: boolean;
 };
 
 // Formato della colonna version_number (es. "26.10.01", "1.2.3")
@@ -32,14 +33,18 @@ const VersionsModal: React.FC<VersionsModalProps> = ({ isOpen, onClose }) => {
   const { isAdmin } = useAuth();
   const [loading, setLoading] = useState(false);
   const [rows, setRows] = useState<VersionRow[]>([]);
-  const [newRow, setNewRow] = useState<{ version: string; description: string }>({ version: '', description: '' });
+  const [newRow, setNewRow] = useState<{ version: string; description: string; isCurrent: boolean }>({
+    version: '',
+    description: '',
+    isCurrent: true
+  });
 
   const loadVersions = async () => {
     setLoading(true);
     try {
       const { data, error } = await supabase
         .from('version_history')
-        .select('id, version_number, description, created_at')
+        .select('id, version_number, description, created_at, is_current')
         .order('created_at', { ascending: false });
       if (error) throw error;
       setRows(data);
@@ -63,18 +68,20 @@ const VersionsModal: React.FC<VersionsModalProps> = ({ isOpen, onClose }) => {
 
     setLoading(true);
     try {
-      // description e implementation_date sono NOT NULL: non si può mandare null
+      // description e implementation_date sono NOT NULL: non si può mandare null.
+      // Se is_current è true, il trigger version_history_enforce_single_current
+      // azzera automaticamente tutte le altre.
       const { error } = await supabase.from('version_history').insert({
         version_number: version,
         description,
         implementation_date: new Date().toISOString().slice(0, 10),
-        is_current: false
+        is_current: newRow.isCurrent
       });
 
       if (error) throw error;
 
       toast.success('Versione aggiunta');
-      setNewRow({ version: '', description: '' });
+      setNewRow({ version: '', description: '', isCurrent: true });
       await loadVersions();
     } catch (e) {
       const msg = e instanceof Error ? e.message : 'Errore durante l\'inserimento';
@@ -134,6 +141,17 @@ const VersionsModal: React.FC<VersionsModalProps> = ({ isOpen, onClose }) => {
             </div>
             )}
             {isAdmin() && (
+            <label className="flex items-center gap-2 text-sm text-gray-300 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={newRow.isCurrent}
+                onChange={(e) => setNewRow({ ...newRow, isCurrent: e.target.checked })}
+                className="h-4 w-4 accent-roloil-purple"
+              />
+              Imposta come versione corrente (azzera automaticamente le altre)
+            </label>
+            )}
+            {isAdmin() && (
             <div className="flex justify-end">
               <button
                 onClick={addVersion}
@@ -156,8 +174,18 @@ const VersionsModal: React.FC<VersionsModalProps> = ({ isOpen, onClose }) => {
                 </thead>
                 <tbody>
                   {rows.map((r) => (
-                    <tr key={r.id} className="border-t border-roloil-light-gray">
-                      <td className="px-3 py-2"><span>{r.version_number}</span></td>
+                    <tr
+                      key={r.id}
+                      className={`border-t border-roloil-light-gray ${r.is_current ? 'bg-roloil-dark/60' : ''}`}
+                    >
+                      <td className="px-3 py-2">
+                        <span className={r.is_current ? 'font-semibold text-roloil-purple' : ''}>
+                          {r.version_number}
+                        </span>
+                        {r.is_current && (
+                          <span className="ml-2 text-xs text-roloil-purple">corrente</span>
+                        )}
+                      </td>
                       <td className="px-3 py-2"><span className="text-gray-300">{r.description}</span></td>
                       <td className="px-3 py-2"><span className="text-gray-300">{formatDate(r.created_at)}</span></td>
                     </tr>

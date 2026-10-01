@@ -8,10 +8,13 @@ const VersionBadge: React.FC = () => {
     let mounted = true;
     (async () => {
       try {
+        // Legge la versione marcata is_current, non "la piu' recente per data":
+        // cosi' un retrodatato non sposta il badge. Il trigger
+        // version_history_enforce_single_current garantisce che ce ne sia una sola.
         const { data, error } = await supabase
           .from('version_history')
           .select('version_number')
-          .order('created_at', { ascending: false })
+          .eq('is_current', true)
           .limit(1)
           .maybeSingle();
 
