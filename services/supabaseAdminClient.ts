@@ -1,7 +1,7 @@
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
 import type { Database } from '../types/database';
 
-export const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || 'https://tctndvmemnllloctyrpn.supabase.co';
+export const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || '';
 
 // Service Role Key per operazioni admin
 // IMPORTANTE: Questa chiave deve essere tenuta segreta e usata solo lato server

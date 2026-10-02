@@ -6,8 +6,8 @@
 import { createClient } from '@supabase/supabase-js';
 import { CorrespondenceRecord } from './types-new';
 
-const supabaseUrl = 'https://tctndvmemnllloctyrpn.supabase.co';
-const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRjdG5kdm1lbW5sbGxvY3R5cnBuIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc1OTc2OTQ3MSwiZXhwIjoyMDc1MzQ1NDcxfQ.QZM75N0QiPqH6Xhcno9i0IeQzIrVqtS-TpK9bgN43kw';
+const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || '';
+const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY || '';
 
 export class SupabaseCorrespondenceService {
   private supabase = createClient(supabaseUrl, supabaseKey);

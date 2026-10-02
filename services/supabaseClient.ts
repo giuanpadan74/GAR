@@ -3,8 +3,8 @@ import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 import type { Database } from '../types/database';
 
 // Usa le variabili d'ambiente per la configurazione
-export const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || 'https://tctndvmemnllloctyrpn.supabase.co';
-export const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRjdG5kdm1lbW5sbGxvY3R5cnBuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTk3Njk0NzEsImV4cCI6MjA3NTM0NTQ3MX0._UkcN1RRxVS2uW2jVjJNtfHMyNYA-NPnT-8njsRqQr0';
+export const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || '';
+export const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY || '';
 
 // Controllo per assicurarsi che la chiave sia presente
 if (!supabaseUrl || !supabaseKey) {
