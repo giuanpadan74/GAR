@@ -32,7 +32,6 @@
     "node_modules",
     "dist",
     "supabase/functions",
-    "visualizzatore-corrispondenze-oli",
-    "lubefinder-ai"
+    "visualizzatore-corrispondenze-oli"
   ]
 }

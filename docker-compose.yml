@@ -13,7 +13,6 @@ services:
       # Nota: Sostituire con i valori reali in produzione
       - VITE_SUPABASE_URL=${VITE_SUPABASE_URL:-https://tctndvmemnllloctyrpn.supabase.co}
       - VITE_SUPABASE_ANON_KEY=${VITE_SUPABASE_ANON_KEY}
-      - GEMINI_API_KEY=${GEMINI_API_KEY}
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost/health"]
