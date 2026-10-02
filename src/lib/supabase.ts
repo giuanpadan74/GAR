@@ -13,16 +13,21 @@ if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
 // Singleton migliorato: lazy init, istanza unica
 let client: SupabaseClient<Database> | null = null;
 
+// Stessa chiave di storage del client in services/supabaseClient.ts: due
+// chiavi diverse significerebbero due sessioni in conflitto nello stesso
+// browser, con una che si rifiuta di riconoscere l'altra come autenticata.
+const AUTH_STORAGE_KEY = 'roloil.auth.token';
+
 export function getSupabaseClient(): SupabaseClient<Database> {
   if (client) return client;
 
   // Configurazione snella orientata alle performance
   client = createClient<Database>(SUPABASE_URL, SUPABASE_ANON_KEY, {
     auth: {
-      // Disabilita l'auto refresh per ridurre wakeups e chatter
-      autoRefreshToken: false,
+      autoRefreshToken: true,
       persistSession: true,
       detectSessionInUrl: true,
+      storageKey: AUTH_STORAGE_KEY,
       flowType: 'pkce',
     },
     global: {
